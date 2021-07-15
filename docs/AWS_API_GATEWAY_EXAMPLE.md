@@ -99,7 +99,7 @@ Now customize the `.env` file to your values by following the instructions in th
 >
 >The lambda function will require an Approov secret and from where to retrieve it.
 >
->For **development** and **testing** proposes we will use a dummy Approov secret and provide it through an environment variable on the `.env` file. You can retrieve the dummy secret from [here]().
+>For **development** and **testing** proposes we will use a dummy Approov secret and provide it through an environment variable on the `.env` file. The dummy secret to use to follow this guide is `h+CX0tOzdAAR9l15bWAqvq7w9olk66daIH+Xk+IAHhVVHszjDzeGobzNnqyRze3lw/WVyWrc2gZfh3XXfBOmww==`.
 >
 >For **production** it's preferred to use the AWS Secret Manager to store the Approov secret as instructed [here](docs/API_GATEWAY_QUICKSTART.md#approov-secret), therefore no need to configure it as an env var in the `.env` file.
 
@@ -496,7 +496,7 @@ They make a distinction between [HTTP APIs and REST APIs](https://docs.aws.amazo
 Execute one of the commands:
 
 ```bash
-./stack aws-apigw-create
+./stack aws-apigw-create-http-api
 ```
 
 or
@@ -805,9 +805,8 @@ apigw-requestid: BvrtujDgDoEEMqg=
 
 Example for missing the Approov Token header:
 
-```text
+```bash
 curl -iX GET "https://${AWS_HTTP_API_ID}.execute-api.${AWS_REGION}.amazonaws.com/v1/shapes"
-```
 ```
 
 Output:
@@ -823,7 +822,3 @@ apigw-requestid: Bvr3chAYjoEEPgg=
 ```
 
 [TOC](#toc-table-of-contents)
-
-
-## Production Usage
-

@@ -39,14 +39,13 @@ Show_Help() {
                             environment variables:
                             $ ./stack aws-lambda-env-vars
 
-  aws-apigw-create          Creates a HTTP API for shapes.approov.io or for
+  aws-apigw-create-http-api Creates a HTTP API for shapes.approov.io or for
                             the given API domain:
-                            $ ./stack aws-apigw-create
-                            $ ./stack aws-apigw-create your-api-domain
+                            $ ./stack aws-apigw-create-http-api
+                            $ ./stack aws-apigw-create-http-api api.domain.com
 
   aws-logs-create-group     Creates a log group for the Approov API Gateway:
                             $ ./stack aws-logs-create-group
-                            $ ./stack aws-logs-create-group your-custom-group
 
   aws-apigw-add-logs        Enables CloudWatch logs for the API:
                             $ ./stack aws-apigw-add-logs
@@ -159,22 +158,22 @@ AWS_API_GATEWAY_V2_Create_Api() {
   aws apigatewayv2 create-api \
     --name ${PREFIX}approov-shapes-api \
     --protocol-type HTTP \
-    --target "${1:-https://shapes.approov.io}"
+    --target "${1? Missing API Domain, e.g: your.api.domain.com}"
 }
 
 AWS_Logs_Create_Group() {
   aws logs create-log-group \
-    --log-group-name ${1:-${PREFIX}aws-api-gateway-approov}
+    --log-group-name ${LOG_GROUP}
 
   aws logs describe-log-groups \
-    --log-group-name-prefix ${1:-${PREFIX}aws-api-gateway-approov}
+    --log-group-name-prefix ${LOG_GROUP}
 }
 
 AWS_API_GATEWAY_V2_Add_Logs() {
   aws apigatewayv2 update-stage \
     --api-id ${AWS_HTTP_API_ID} \
     --stage-name '$default' \
-    --access-log-settings "{\"DestinationArn\": \"arn:aws:logs:${AWS_REGION}:${AWS_ACCOUNT_ID}:log-group:${1:-${PREFIX}aws-api-gateway-approov}:*\", \"Format\": \"\$context.identity.sourceIp - - [\$context.requestTime] '\$context.httpMethod \$context.routeKey \$context.protocol' \$context.status \$context.responseLength \$context.requestId \$context.authorizer.error\"}"
+    --access-log-settings "{\"DestinationArn\": \"arn:aws:logs:${AWS_REGION}:${AWS_ACCOUNT_ID}:log-group:${LOG_GROUP}:*\", \"Format\": \"\$context.identity.sourceIp - - [\$context.requestTime] '\$context.httpMethod \$context.routeKey \$context.protocol' \$context.status \$context.responseLength \$context.requestId \$context.authorizer.error\"}"
 }
 
 AWS_API_GATEWAY_V2_Add_Authorizer() {
@@ -199,19 +198,20 @@ AWS_Lambda_Add_Permission() {
 
 AWS_API_GATEWAY_V2_List_Routes() {
   aws apigatewayv2 get-routes \
-    --api-id ${1:-${AWS_HTTP_API_ID}}
+    --api-id ${1? Missing the API ID}
 }
 
 AWS_API_GATEWAY_V2_Update_Route() {
   aws apigatewayv2 update-route \
-    --api-id ${AWS_HTTP_API_ID} \
-    --route-id ${AWS_ROUTE_ID} \
-    --authorization-type CUSTOM \
-    --authorizer-id ${AWS_AUTHORIZER_ID}
+    --route-id ${1? Missing the API Route ID} \
+    --api-id ${2? Missing the API ID} \
+    --authorizer-id ${3? Missing the API Authorizer ID} \
+    --authorization-type CUSTOM
 }
 
 Main() {
 
+  local PREFIX=example_
   local LAMBDA_LANG=python
 
   if [ -f ./.env ]; then
@@ -220,6 +220,8 @@ Main() {
     printf "\n---> Missing .env file. Copy .env.example to .env and adjust values.\n\n"
     exit 1
   fi
+
+  local LOG_GROUP=${PREFIX}aws-api-gateway-approov
 
   for input in "${@}"; do
     case "${input}" in
@@ -268,21 +270,21 @@ Main() {
         exit $?
         ;;
 
-      "aws-apigw-create" )
+      "aws-apigw-create-http-api" )
         shift 1
-        AWS_API_GATEWAY_V2_Create_Api "${@}"
+        AWS_API_GATEWAY_V2_Create_Api "${1:-https://shapes.approov.io}"
         exit $?
         ;;
 
       "aws-logs-create-group" )
         shift 1
-        AWS_Logs_Create_Group "${@}"
+        AWS_Logs_Create_Group
         exit $?
         ;;
 
       "aws-apigw-add-logs" )
         shift 1
-        AWS_API_GATEWAY_V2_Add_Logs "${@}"
+        AWS_API_GATEWAY_V2_Add_Logs
         exit $?
         ;;
 
@@ -300,13 +302,16 @@ Main() {
 
       "aws-apigw-list-routes" )
         shift 1
-        AWS_API_GATEWAY_V2_List_Routes "${@}"
+        AWS_API_GATEWAY_V2_List_Routes "${1:-${AWS_HTTP_API_ID}}"
         exit $?
         ;;
 
       "aws-apigw-update-route" )
         shift 1
-        AWS_API_GATEWAY_V2_Update_Route "${@}"
+        AWS_API_GATEWAY_V2_Update_Route \
+          "${1:-${AWS_ROUTE_ID}}" \
+          "${2:-${AWS_HTTP_API_ID}}" \
+          "${3:-${AWS_AUTHORIZER_ID}}"
         exit $?
         ;;
 
@@ -340,7 +345,7 @@ Main() {
 
       "destroy" )
         shift 1
-        Docker_Stop "${@}"
+        Docker_Stop
         exit $?
         ;;
 
@@ -353,4 +358,4 @@ Main() {
   Show_Help
 }
 
-Main "${@}"
+Main "${@:-help}"

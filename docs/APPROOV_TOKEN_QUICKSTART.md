@@ -33,7 +33,7 @@ For more background, see the overview in the [README](/README.md#how-it-works) a
 
 To complete this quickstart you will need to already have an HTTP API created in the AWS API Gateway, and the AWS and Approov CLI(s) installed.
 
-* [AWS APIGATEWAY HTTP API](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop.html#http-api-examples.cli.quick-create) - If you don't have one yet you may want to follow instead the [AWS API Gateway Approov Example](/docs/AWS_API_GATEWAY_APPROOV_EXAMPLE.md).
+* [AWS APIGATEWAY HTTP API](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop.html#http-api-examples.cli.quick-create) - If you don't have one yet you may want to follow instead the [AWS API Gateway Approov Example](/docs/AWS_API_GATEWAY_EXAMPLE.md).
 * [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) - Will be used to create all the necessary resources in AWS.
 * [Approov CLI](https://approov.io/docs/latest/approov-installation/#approov-tool) - Will be used to retrieve the Approov Secret and configure the API.
 
@@ -119,7 +119,7 @@ Add it with:
 approov api -add ${API_DOMAIN}
 ```
 
-> **NOTE:** When prompted authenticate with your `admin` password.
+> **NOTE:** When prompted authenticate with your `admin` password. This will create an authenticated session that will expire in 1 hour. After expiration you will be prompted again for that password when executing any of the Approov commands.
 
 Adding the API domain also configures the [dynamic certificate pinning](https://approov.io/docs/latest/approov-usage-documentation/#approov-dynamic-pinning) setup, out of the box.
 
@@ -212,6 +212,8 @@ Execute the command:
 aws ecr get-login-password | sudo docker login ${DOCKER_IMAGE_REGISTRY} --username AWS --password-stdin
 ```
 
+> **NOTE:** The use of `sudo` after a pipe requires that you already have an active `sudo` session, because you will not see the prompt for the `sudo` password and the command will fail. To force a a `sudo` login just execute the command `sudo docker`. The use of `sudo` may be not necessary to run docker commands on your system, but this depends on how your system is configured.
+
 The output will confirm the success of the operation.
 
 #### Create the ECR Repository
@@ -283,7 +285,7 @@ curl -X POST "http://localhost:9000/2015-03-31/functions/function/invocations" -
 Output:
 
 ```json
-{"isAuthorized":true,"context":{"approovTokenClaims":{"exp":4708683205.891912}}}
+{"isAuthorized": true, "context": {"approovTokenClaims": {"exp": 1626266031, "ip": "1.2.3.4", "did": "ExampleApproovTokenDID=="}}}
 ```
 
 ###### Example for an invalid Approov Token:
@@ -377,9 +379,9 @@ aws apigatewayv2 create-authorizer \
 The output will confirm the success of the operation.
 
 #### Export the Authorize ID to the Environment
-
+j
 ```bash
-export AWS_AUTHORIZER_ID=8uog0g
+export AWS_AUTHORIZER_ID=___YOUR_AUTHORIZER_ID_HERE___
 ```
 
 > **NOTE:**: Replace `8uog0g` with your value for the `AuthorizerId` in the output of the previous command.
@@ -435,6 +437,8 @@ Make the cURL request to one of the routes you added the Approov authorizer:
 curl -iX GET "https://${AWS_HTTP_API_ID}.execute-api.${AWS_REGION}.amazonaws.com" \
   --header "Approov-Token: $(approov token -type valid -genExample ${API_DOMAIN})"
 ```
+
+> **NOTE**: If this command stays frozen, then the most probable cause is that your Approov CLI authenticated session has expired. Authenticate again as instructed in the Troubleshooting [section](#approov-cli-authentication-expired).
 
 The request should be accepted. For example:
 
