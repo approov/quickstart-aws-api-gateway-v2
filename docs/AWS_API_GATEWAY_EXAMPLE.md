@@ -12,6 +12,7 @@ This example is for developers not familiar with the AWS API Gateway who are loo
 * [Api Gateway V2 Http Api](#api-gateway-v2-http-api)
 * [Approov Token Authorizer Lambda Function](#approov-token-authorizer-lambda-fjunction)
 * [Test your Approov Integration](#test-your-approov-integration)
+* [Troubleshooting](#troubleshooting)
 
 
 ## Why?
@@ -29,9 +30,14 @@ For more background, see the overview in the [README](/README.md#how-it-works) a
 
 ## Requirements
 
-* [Approov CLI](https://approov.io/docs/latest/approov-installation/#approov-tool) - Will be used to retrieve the Approov Secret and configure the API.
 * [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) - Will be used to create all the necessary resources in AWS.
 * [Docker CLI](https://docs.docker.com/get-docker/) - Will be used to package the AWS lambda function.
+
+This guide was tested in the following Operating Systems:
+
+* Ubuntu 20.04
+* MacOS Big Sur
+* Windows 10 WSL2 - Ubuntu 20.04
 
 [TOC](#toc-table-of-contents)
 
@@ -89,7 +95,6 @@ The `.env.example` file contains all the variables that you need to export to th
 Copy the `.env.example` to `.env` with:
 
 ```bash
-# On Linux and MAC:
 cp .env.example .env
 ```
 
@@ -106,7 +111,6 @@ Now customize the `.env` file to your values by following the instructions in th
 Now, export all the env vars on the `.env` file to the environment with the following command:
 
 ```bash
-# On Linux and MAC:
 export $(grep -v '^#' .env | xargs -0)
 ```
 
@@ -505,8 +509,10 @@ or
 aws apigatewayv2 create-api \
     --name ${PREFIX}approov-shapes-api \
     --protocol-type HTTP \
-    --target https://shapes.approov.io
+    --target https://shapes.approov.io # or https://your.api.domain.com
 ```
+
+> **NOTE:** This example uses our `https://shapes.approov.io` API that exposes `v1` and `v2` endpoints. The `v2` endpoints are protected at the origin with an Approov token check, but `v1` endpoints aren't. Fill free to replace `https://shapes.approov.io` with your onw API domain.
 
 Output:
 
@@ -785,6 +791,8 @@ apigw-requestid: BvrXBhuAjoEEPSg=
 {"shape":"Circle","status":"Circle (unprotected)"}
 ```
 
+> **NOTE:** The status in the response says unprotected because at the origin `v1/shapes` the Approov token check is not performed, only at `v2/shapes`. This is an example of how you can use Approov to protect a third party API that you have not control off.
+
 Example for an invalid Approov Token:
 
 ```bash
@@ -820,5 +828,12 @@ apigw-requestid: Bvr3chAYjoEEPgg=
 
 {"message":"Unauthorized"}
 ```
+
+[TOC](#toc-table-of-contents)
+
+
+## Troubleshooting
+
+Please follow the [troubleshooting guide](/docs/APPROOV_TOKEN_QUICKSTART.md#troubleshooting) in the Approov quickstart.
 
 [TOC](#toc-table-of-contents)

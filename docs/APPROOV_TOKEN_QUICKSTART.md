@@ -12,6 +12,7 @@ This quickstart is for developers familiar with Aws API Gateway who are looking 
 * [Approov Setup](#approov-setup)
 * [Approov Token Check](#approov-token-check)
 * [Test your Approov Integration](#test-your-approov-integration)
+* [Troubleshooting](#troubleshooting)
 
 
 ## Why?
@@ -35,7 +36,14 @@ To complete this quickstart you will need to already have an HTTP API created in
 
 * [AWS APIGATEWAY HTTP API](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop.html#http-api-examples.cli.quick-create) - If you don't have one yet you may want to follow instead the [AWS API Gateway Approov Example](/docs/AWS_API_GATEWAY_EXAMPLE.md).
 * [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) - Will be used to create all the necessary resources in AWS.
+* [Docker CLI](https://docs.docker.com/get-docker/) - Will be used to package the AWS lambda function.
 * [Approov CLI](https://approov.io/docs/latest/approov-installation/#approov-tool) - Will be used to retrieve the Approov Secret and configure the API.
+
+This quickstart was tested in the following Operating Systems:
+
+* Ubuntu 20.04
+* MacOS Big Sur
+* Windows 10 WSL2 - Ubuntu 20.04
 
 [TOC](#toc-table-of-contents)
 
@@ -484,7 +492,19 @@ apigw-requestid: Bvr3chAYjoEEPgg=
 {"message":"Unauthorized"}
 ```
 
-### Troubleshooting
+## Troubleshooting
+
+#### AWS CLI and Clock Time
+
+The AWS CLI does some encryption on the data it sends in their requests, therefore if your computer clock it's not synchronized you may get errors saying that was a bad request and/or permissions issues.
+
+For example, when using Windows 10 WSL2 with Ubuntu you may have Ubuntu in UTC+0 and the Windows 10 in UTC+1.
+
+#### AWS Region
+
+When your are asked to set the env var `AWS_REGION` you MUST use the same value configured at `~/.aws/config` otherwise it will cause permissions issues.
+
+If you don't want to change your `~/.aws/config` file and still use a different AWS region then you need to add the `--region ___AWS_REGION_HERE___` to all AWS CLI commands you copy from this quickstart.
 
 #### Increase Logs Verbosity
 
