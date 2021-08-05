@@ -15,67 +15,71 @@ Show_Help() {
 
   COMMANDS:
 
-  aws-ecr-create-repo       Creates the repo to store the docker images:
-                            $ ./stack aws-ecr-create-repo python
+  aws-ecr-create-repo           Creates the repo to store the docker images:
+                                $ ./stack aws-ecr-create-repo python
 
-  aws-ecr-login             Login to your private AWS ECR registry:
-                            $ ./stack aws-ecr-login
+  aws-ecr-login                 Login to your private AWS ECR registry:
+                                $ ./stack aws-ecr-login
 
-  aws-ecr-push              Pushes the docker image:
-                            $ ./stack aws-ecr-push python
+  aws-ecr-push                  Pushes the docker image:
+                                $ ./stack aws-ecr-push python
 
-  aws-iam-create-role       Creates the IAM role for the Approov lambda
-                            function:
-                            $ ./stack aws-iam-create-role
+  aws-iam-create-role           Creates the IAM role for the Approov lambda
+                                function:
+                                $ ./stack aws-iam-create-role
 
-  aws-iam-add-role-policy   Attaches a policy to the Approov lambda function
-                            role:
-                            $ ./stack aws-iam-add-role-policy
+  aws-iam-add-role-policy       Attaches a policy to the Approov lambda function
+                                role:
+                                $ ./stack aws-iam-add-role-policy
 
-  aws-lambda-create         Creates the Approov lambda function:
-                            $ ./stack aws-lambda-create python
+  aws-lambda-create             Creates the Approov lambda function:
+                                $ ./stack aws-lambda-create python
 
-  aws-lambda-add-env-vars   Updates the Approov Lambda configuration with
-                            environment variables:
-                            $ ./stack aws-lambda-env-vars
+  aws-lambda-add-env-vars       Updates the Approov Lambda configuration with
+                                environment variables:
+                                $ ./stack aws-lambda-env-vars
 
-  aws-apigw-create-http-api Creates a HTTP API for shapes.approov.io or for
-                            the given API domain:
-                            $ ./stack aws-apigw-create-http-api
-                            $ ./stack aws-apigw-create-http-api api.domain.com
+  aws-apigw-create-http-api     Creates a HTTP API for the given API domain:
+                                $ ./stack aws-apigw-create-http-api api.domain.com
 
-  aws-logs-create-group     Creates a log group for the Approov API Gateway:
-                            $ ./stack aws-logs-create-group
+  aws-apigw-get-integrations    Gets all the integrations for the HTTP API:
+                                $ ./stack aws-apigw-get-integrations
 
-  aws-apigw-add-logs        Enables CloudWatch logs for the API:
-                            $ ./stack aws-apigw-add-logs
+  aws-apigw-update-integration  Updates an integration for a HTTP API:
+                                $ ./stack aws-apigw-update-integration
 
-  aws-apigw-add-authorizer  Creates an authorizer in the API Gateway:
-                            $ ./stack aws-apigw-add-authorizer
+  aws-logs-create-group         Creates a log group for the Approov API Gateway:
+                                $ ./stack aws-logs-create-group
 
-  aws-lambda-add-permission Add the lambda permissions to the Authorizer:
-                            $ ./stack aws-lambda-add-permission
+  aws-apigw-add-logs            Enables CloudWatch logs for the API:
+                                $ ./stack aws-apigw-add-logs
 
-  aws-apigw-list-routes     List all routes for the given API ID:
-                            $ ./stack aws-apigw-list-routes
+  aws-apigw-add-authorizer      Creates an authorizer in the API Gateway:
+                                $ ./stack aws-apigw-add-authorizer
 
-  aws-apigw-update-route    Add the authorizer to the default route:
-                            $ ./stack aws-apigw-update-route
+  aws-lambda-add-permission     Adds the lambda permissions to the Authorizer:
+                                $ ./stack aws-lambda-add-permission
 
-  build                     Builds the docker image:
-                            $ ./stack build python
+  aws-apigw-list-routes         Lists all routes for the given API ID:
+                                $ ./stack aws-apigw-list-routes
 
-  run                       Runs in localhost the lambda function:
-                            $ ./stack run python
+  aws-apigw-update-route        Adds the authorizer to the default route:
+                                $ ./stack aws-apigw-update-route
 
-  reset                     Builds a new docker image and runs it:
-                            $ ./stack reset python
+  build                         Builds the docker image:
+                                $ ./stack build python
 
-  logs                      Tails the container logs:
-                            $ ./stack logs
+  run                           Runs in localhost the lambda function:
+                                $ ./stack run python
 
-  destroy                   Stops and removes the container:
-                            $ ./stack destroy
+  reset                         Builds a new docker image and runs it:
+                                $ ./stack reset python
+
+  logs                          Tails the container logs:
+                                $ ./stack logs
+
+  destroy                       Stops and removes the container:
+                                $ ./stack destroy
 
 EOF
 }
@@ -159,6 +163,17 @@ AWS_API_GATEWAY_V2_Create_Api() {
     --name ${PREFIX}approov-shapes-api \
     --protocol-type HTTP \
     --target "${1? Missing API Domain, e.g: your.api.domain.com}"
+}
+
+AWS_API_GATEWAY_V2_Get_Integrations() {
+  aws apigatewayv2 get-integrations --api-id ${AWS_HTTP_API_ID}
+}
+
+AWS_API_GATEWAY_V2_Update_Integration() {
+  aws apigatewayv2 update-integration \
+    --api-id ${AWS_HTTP_API_ID} \
+    --integration-id ${AWS_HTTP_API_INTEGRATION_ID} \
+    --request-parameters "{\"append:header.X-API-KEY\": \"${API_KEY}\"}"
 }
 
 AWS_Logs_Create_Group() {
@@ -272,7 +287,19 @@ Main() {
 
       "aws-apigw-create-http-api" )
         shift 1
-        AWS_API_GATEWAY_V2_Create_Api "${1:-https://shapes.approov.io}"
+        AWS_API_GATEWAY_V2_Create_Api "${1? Missing the API domain, e.g https://free.currencyconverterapi.com}"
+        exit $?
+        ;;
+
+      "aws-apigw-get-integrations" )
+        shift 1
+        AWS_API_GATEWAY_V2_Get_Integrations
+        exit $?
+        ;;
+
+      "aws-apigw-update-integration" )
+        shift 1
+        AWS_API_GATEWAY_V2_Update_Integration
         exit $?
         ;;
 

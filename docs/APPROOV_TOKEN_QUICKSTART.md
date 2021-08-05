@@ -506,6 +506,10 @@ When your are asked to set the env var `AWS_REGION` you MUST use the same value 
 
 If you don't want to change your `~/.aws/config` file and still use a different AWS region then you need to add the `--region ___AWS_REGION_HERE___` to all AWS CLI commands you copy from this quickstart.
 
+#### AWS Credentials
+
+To use the AWS CLI its necessary that you have the Access Key ID and the Secret Access Key set in `~/aws/credentials` and they must be active in your IAM user.
+
 #### Increase Logs Verbosity
 
 If the cURL requests don't return the expected results then you need to check the CloudWatch logs for the lambda function and for the API. In case you cannot spot any cause in the logs you will need to increase the logs verbosity in the lambda function to `DEBUG`.

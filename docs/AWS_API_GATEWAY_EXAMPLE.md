@@ -2,6 +2,13 @@
 
 This example is for developers not familiar with the AWS API Gateway who are looking for a step by step tutorial on how they can create a HTTP API project with an [Approov](https://approov.io) authorizer.
 
+By following this example you will create an HTTP API that will act as a [Reverse Proxy](https://blog.approov.io/using-a-reverse-proxy-to-protect-third-party-apis) to a third party API that you want to protect access to from within your mobile app.
+
+Other use cases for using an Approov authorizer is to protect access to serverless functions, like AWS Lambda functions, or to backends you own or that you don't own, that may be hosted or not in AWS itself.
+
+The Approov authorizer integration steps will be the same no matter the type of backend behind your HTTP API.
+
+
 ## TOC - Table of Contents
 
 * [Why?](#why)
@@ -142,6 +149,9 @@ Output:
 ```text
 Login Succeeded
 ```
+
+> **NOTE:** If your login doesn't succeed it's probably because the `AWS_REGION` environment variable doesn't match the value you have at `~/.aws/config`.
+
 
 #### Create the ECR Repository
 
@@ -495,12 +505,29 @@ The API Gateway as now [V1 and V2 versions](#api-gateway-versions) for the CLI a
 
 They make a distinction between [HTTP APIs and REST APIs](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-vs-rest.html), and we will use through this example the HTTP API introduced in the API Gateway V2.
 
+
+### The Third Party API Setup
+
+To exemplify the third party API we want to protect access with Approov we will use the https://kutt.it/ URL shorten-er API. This API requires an API key, therefore you will need to create [here](https://kutt.it/login) a free account with your email (no credit card needed) in order to get an API Key on the [settings page](https://kutt.it/settings). Fill free to use instead one of your third party APIs or even one of your own APIs.
+
+After you have generated your API Key on the [settings page](https://kutt.it/settings) it's time to export it to the environment:
+
+```bash
+export API_KEY=___YOUR_API_KEY_HERE___
+```
+
+And also the API URL:
+
+```bash
+export API_URL=https://kutt.it
+```
+
 ### Create the HTTP API
 
 Execute one of the commands:
 
 ```bash
-./stack aws-apigw-create-http-api
+./stack aws-apigw-create-http-api ${API_URL}
 ```
 
 or
@@ -509,10 +536,8 @@ or
 aws apigatewayv2 create-api \
     --name ${PREFIX}approov-shapes-api \
     --protocol-type HTTP \
-    --target https://shapes.approov.io # or https://your.api.domain.com
+    --target ${API_URL} # or https://your.api.domain.com
 ```
-
-> **NOTE:** This example uses our `https://shapes.approov.io` API that exposes `v1` and `v2` endpoints. The `v2` endpoints are protected at the origin with an Approov token check, but `v1` endpoints aren't. Fill free to replace `https://shapes.approov.io` with your onw API domain.
 
 Output:
 
@@ -531,13 +556,94 @@ Output:
 
 #### Export the API ID to the Environment
 
-Several command will need to use the API ID, therefore we will export it to an environment variable.
+Several commands will need to use the API ID, therefore we will export it to an environment variable.
 
 ```bash
 export AWS_HTTP_API_ID=hd90tf50jj
 ```
 
 > **NOTE:**: Replace `hd90tf50jj` with your value for the `ApiId` in the output of the previous command.
+
+### Add the API Key Header to the Request
+
+To forward the requests to `https://kutt.it` we need to add the header `X-API-KEY` and we will do that by updating the HTTP API integration created for us when we create the API in the previous step.
+
+#### Get the Integration ID
+
+Execute one of the commands:
+
+```bash
+./stack aws-apigw-get-integrations
+```
+
+or
+
+```bash
+aws apigatewayv2 get-integrations --api-id ${AWS_HTTP_API_ID}
+```
+
+Output:
+
+```json
+{
+    "Items": [
+        {
+            "ApiGatewayManaged": true,
+            "ConnectionType": "INTERNET",
+            "IntegrationId": "6rmua1i",
+            "IntegrationMethod": "ANY",
+            "IntegrationType": "HTTP_PROXY",
+            "IntegrationUri": "https://kutt.it",
+            "PayloadFormatVersion": "1.0",
+            "TimeoutInMillis": 30000
+        }
+    ]
+}
+```
+
+#### Export the Integration ID to the Environment
+
+```bash
+export AWS_HTTP_API_INTEGRATION_ID=6rmua1i
+```
+
+> **NOTE:**: Replace `6rmua1i` with your value for the `IntegrationId` in the output of the previous command.
+
+#### Update the Integration
+
+Execute one of the commands:
+
+```bash
+./stack aws-apigw-update-integration
+```
+
+or
+
+```bash
+aws apigatewayv2 update-integration \
+    --api-id ${AWS_HTTP_API_ID} \
+    --integration-id ${AWS_HTTP_API_INTEGRATION_ID} \
+    --request-parameters "{\"append:header.X-API-KEY\": \"${API_KEY}\"}"
+```
+
+Output:
+
+```json
+{
+    "ApiGatewayManaged": true,
+    "ConnectionType": "INTERNET",
+    "IntegrationId": "6rmua1i",
+    "IntegrationMethod": "ANY",
+    "IntegrationType": "HTTP_PROXY",
+    "IntegrationUri": "https://kutt.it",
+    "PayloadFormatVersion": "1.0",
+    "RequestParameters": {
+        "append:header.X-API-KEY": "aaabbbbccccddddeeeeffffgggg"
+    },
+    "TimeoutInMillis": 30000
+}
+
+```
 
 ### Enable Logging
 
@@ -775,28 +881,39 @@ Output:
 Example for a valid Appproov Token:
 
 ```bash
-curl -iX GET "https://${AWS_HTTP_API_ID}.execute-api.${AWS_REGION}.amazonaws.com/v1/shapes"  --header 'Approov-Token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjQ3MDg2ODMyMDUuODkxOTEyfQ.c8I4KNndbThAQ7zlgX4_QDtcxCrD9cff1elaCJe9p9U'
+curl -X POST "https://${AWS_HTTP_API_ID}.execute-api.${AWS_REGION}.amazonaws.com/api/v2/links"  \
+    --header "Content-Type: application/json" \
+    --header 'Approov-Token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjQ3MDg2ODMyMDUuODkxOTEyfQ.c8I4KNndbThAQ7zlgX4_QDtcxCrD9cff1elaCJe9p9U' \
+    --data '{"target": "https://approov.io"}'
 ```
 
 Output:
 
 ```json
-HTTP/2 200
-date: Wed, 30 Jun 2021 15:22:20 GMT
-content-type: application/json; charset=utf-8
-content-length: 50
-vary: Origin
-apigw-requestid: BvrXBhuAjoEEPSg=
-
-{"shape":"Circle","status":"Circle (unprotected)"}
+{
+    "id":"72379aec-5c7e-4092-b702-267fde3929de",
+    "address":"8fK4Cc",
+    "banned":false,
+    "password":false,
+    "target":"https://approov.io",
+    "visit_count":0,
+    "created_at":"2021-08-04T16:29:05.990Z",
+    "updated_at":"2021-08-04T16:29:05.990Z",
+    "description":null,
+    "expire_in":"2021-08-04T16:34:05.526Z",
+    "link":"https://kutt.it/8fK4Cc"
+}
 ```
 
-> **NOTE:** The status in the response says unprotected because at the origin `v1/shapes` the Approov token check is not performed, only at `v2/shapes`. This is an example of how you can use Approov to protect a third party API that you have not control off.
+**NOTE:** You can give a try to the generated shorten link https://kutt.it/8fK4Cc.
 
 Example for an invalid Approov Token:
 
 ```bash
-curl -iX GET "https://${AWS_HTTP_API_ID}.execute-api.${AWS_REGION}.amazonaws.com/v1/shapes"  --header 'Approov-Token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjQ3MDg2ODMyMDUuODkxOTEyfQ._ZdLOZmK4KXSIpVlhOpHBgboSHHTWer-X6oLqFIDQWI'
+curl -iX POST "https://${AWS_HTTP_API_ID}.execute-api.${AWS_REGION}.amazonaws.com/api/v2/links" \
+    --header "Content-Type: application/json" \
+    --header 'Approov-Token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjQ3MDg2ODMyMDUuODkxOTEyfQ._ZdLOZmK4KXSIpVlhOpHBgboSHHTWer-X6oLqFIDQWI' \
+    --data '{"target": "https://approov.io"}'
 ```
 
 Output:
@@ -814,7 +931,9 @@ apigw-requestid: BvrtujDgDoEEMqg=
 Example for missing the Approov Token header:
 
 ```bash
-curl -iX GET "https://${AWS_HTTP_API_ID}.execute-api.${AWS_REGION}.amazonaws.com/v1/shapes"
+curl -iX POST "https://${AWS_HTTP_API_ID}.execute-api.${AWS_REGION}.amazonaws.com/api/v2/links" \
+    --header "Content-Type: application/json" \
+    --data '{"target": "https://approov.io"}'
 ```
 
 Output:
