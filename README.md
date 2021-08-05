@@ -4,6 +4,8 @@
 
 This repo implements the Approov API request verification for the [AWS API Gateway](https://aws.amazon.com/api-gateway/), which performs the verification check on the Approov Token before allowing valid traffic to reach the API endpoint.
 
+![Approov Authorizer diagram for the AWS API Gateway](/docs/img/approov-aws-api-gateway-authoriser.png)
+
 If you are looking for another Approov integration you can check our list of [quickstarts](https://approov.io/docs/latest/approov-integration-examples/backend-api/), and if you don't find what you are looking for, then please let us know [here](https://approov.io/contact).
 
 
