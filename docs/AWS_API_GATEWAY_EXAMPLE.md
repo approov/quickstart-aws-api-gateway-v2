@@ -508,7 +508,7 @@ They make a distinction between [HTTP APIs and REST APIs](https://docs.aws.amazo
 
 ### The Third Party API Setup
 
-To exemplify the third party API we want to protect access with Approov we will use the https://kutt.it/ URL shorten-er API. This API requires an API key, therefore you will need to create [here](https://kutt.it/login) a free account with your email (no credit card needed) in order to get an API Key on the [settings page](https://kutt.it/settings). Fill free to use instead one of your third party APIs or even one of your own APIs.
+To exemplify the third party API we want to protect access with Approov we will use the https://kutt.it/ URL shorten-er API. This API requires an API key, therefore you will need to create [here](https://kutt.it/login) a free account with your email (no credit card needed) in order to get an API Key on the [settings page](https://kutt.it/settings). Feel free to use instead one of your third party APIs or even one of your own APIs.
 
 After you have generated your API Key on the [settings page](https://kutt.it/settings) it's time to export it to the environment:
 
@@ -534,7 +534,7 @@ or
 
 ```bash
 aws apigatewayv2 create-api \
-    --name ${PREFIX}approov-shapes-api \
+    --name ${PREFIX}approov-kuttit-api \
     --protocol-type HTTP \
     --target ${API_URL} # or https://your.api.domain.com
 ```
@@ -548,7 +548,7 @@ Output:
     "ApiKeySelectionExpression": "$request.header.x-api-key",
     "CreatedDate": "2021-07-09T17:13:28+00:00",
     "DisableExecuteApiEndpoint": false,
-    "Name": "paulos-test_approov/shapes-api",
+    "Name": "paulos-test_approov/kuttit-api",
     "ProtocolType": "HTTP",
     "RouteSelectionExpression": "$request.method $request.path"
 }
