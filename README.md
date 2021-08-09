@@ -32,7 +32,7 @@ You can learn more about Approov, the motives for adopting it, and more detail o
 
 ## How it works?
 
-This is a brief overview of how the Approov cloud service and the AWS API Gateway fit together from a backend perspective. For a complete overview of how the mobile app and backend fit together with the Approov cloud service and the Approov SDK we recommend to read the [Approov overview](https://approov.io/product) page on our website.
+This is a brief overview of how the Approov cloud service and the AWS API Gateway fit together from a backend perspective. For a complete overview of how the mobile app and backend fit together with the Approov cloud service and the Approov SDK we recommend that you read the [Approov overview](https://approov.io/product) page on our website.
 
 ### Approov Cloud Service
 
@@ -41,11 +41,11 @@ The Approov cloud service attests that a device is running a legitimate and tamp
 * If the integrity check passes then a valid token is returned to the mobile app
 * If the integrity check fails then a legitimate looking token will be returned
 
-In either case, the app, unaware of the token's validity, adds it to every request it makes to the Approov protected API(s).
+In either case, the app, unaware of the token's validity, adds it to every request it makes to Approov protected API(s).
 
 ### AWS API Gateway
 
-The AWS API Gateway ensures that the token supplied in the `Approov-Token` header is present and valid. The validation is done by using a shared secret known only to the Approov cloud service and the AWS API Gateway.
+This quick start shows you how to setup AWS API Gateway to ensure that the token supplied in the `Approov-Token` header is present and valid. The validation is done by using a shared secret known only to the Approov cloud service and your AWS API Gateway deployment.
 
 The request is handled such that:
 
@@ -62,9 +62,9 @@ The quickstart for the Approov integration with the AWS API Gateway gets you up 
 
 * [Approov token check quickstart](/docs/APPROOV_TOKEN_QUICKSTART.md)
 
-Bear in mind that the quickstart assumes that you already have an AWS API Gateway running, and that your are familiar with managing it. If you are not familiar with the AWS API Gateway then you want to follow instead the step by step [AWS API Gateway Example](/docs/AWS_API_GATEWAY_EXAMPLE.md) to learn how to build one from scratch and integrate Approov on it.
+Please bear in mind that the quickstart assumes that you already have an AWS API Gateway running, and that you are familiar with the options for applying changes. If you are not familiar with the AWS API Gateway then you may want to follow the step by step [AWS API Gateway Example](/docs/AWS_API_GATEWAY_EXAMPLE.md) instead. This takes you though all the steps to get a new deployment with Approov protection from scratch.
 
-If you need help to add Approov to the AWS API Gateway then please contact us [here](https://approov.io/contact).
+If you need further help adding Approov to your AWS API Gateway deployment then please contact us [here](https://approov.io/contact).
 
 
 ## Useful Links
