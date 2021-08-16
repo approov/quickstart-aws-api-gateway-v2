@@ -1,6 +1,6 @@
 # Approov Token Quickstart
 
-This quickstart is for developers familiar with AWS API Gateway who want to lear how they can protect an existing HTTP API project in the AWS API Gateway by adding an [Approov](https://approov.io) authorizer lambda.
+This quickstart is for developers familiar with AWS API Gateway who want to learn how they can protect an existing HTTP API project in the AWS API Gateway by adding an [Approov](https://approov.io) authorizer lambda.
 
 
 ## TOC - Table of Contents
@@ -58,7 +58,7 @@ aws lambda add-permission \
     --statement-id approov-lambda-permissions-01 \
     --action lambda:InvokeFunction \
     --principal apigateway.amazonaws.com \
-    --source-arn "arn:aws:execute-api:${AWS_REGION}:${AWS_ACCOUNT_ID}:${AWS_HTTP_API_ID}/authorizers/${AWS_AUTHORIZER_ID}"
+    --source-arn "arn:aws:execute-api:${AWS_DEFAULT_REGION}:${AWS_ACCOUNT_ID}:${AWS_HTTP_API_ID}/authorizers/${AWS_AUTHORIZER_ID}"
 ```
 
 Some of the values for the variables in the above `aws` command are known from the start, like `${AWS_ACCOUNT_ID}`. Others can only be defined after the command that creates the associated resources, for example, the `${AWS_AUTHORIZER_ID}` is only known after the Authorizer has been created.
@@ -69,7 +69,7 @@ The initial set of variables are specified in the next section, the others will 
 
 ### Setup the Environment Variables
 
-* `AWS_REGION` - MUST be the same as configured at `~/.aws/config`. If you want to use another region then you also need to add it to each command `--region ___AWS_REGION_HERE___`.
+* `AWS_DEFAULT_REGION` - MUST be the same as configured at `~/.aws/config`. If you want to use another region then you need to add it to each command `--region ___AWS_REGION_HERE___`.
 * `AWS_ACCOUNT_ID` - MUST be your AWS account number. It can be retrieved with `aws sts get-caller-identity --query Account --output text`
 * `AWS_HTTP_API_ID` - The ID for the HTTP API you want to protect with Approov. It can be retrieved from the AWS CLI with `aws apigatewayv2 get-apis`.
 * `API_DOMAIN` - The domain for the API in the AWS API Gateway.
@@ -79,8 +79,8 @@ The initial set of variables are specified in the next section, the others will 
 On Linux and MAC:
 
 ```bash
-# AWS_REGION=eu-west-2
-export AWS_REGION=___YOUR_AWS_REGION_HERE___
+# AWS_DEFAULT_REGION=eu-west-2
+export AWS_DEFAULT_REGION=___YOUR_AWS_DEFAULT_REGION_HERE___
 
 # AWS_ACCOUNT_ID=1234567890
 export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
@@ -92,7 +92,7 @@ export AWS_HTTP_API_ID=___YOUR_HTTP_API_ID_HERE___
 export API_DOMAIN=___YOUR_HTTP_API_DOMAIN_HERE___
 
 # DOCKER_IMAGE_REGISTRY=1234567890.dkr.ecr.eu-west-2.amazonaws.com
-export DOCKER_IMAGE_REGISTRY=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+export DOCKER_IMAGE_REGISTRY=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com
 
 # DOCKER_IMAGE_NAME=1234567890.dkr.ecr.eu-west-2.amazonaws.com/approov-token-lambda-authorizer:13July2021_16h18m52s
 export DOCKER_IMAGE_NAME=${DOCKER_IMAGE_REGISTRY}/approov-token-lambda-authorizer:$(date +%d%B%Y_%Hh%Mm%Ss)
@@ -110,12 +110,6 @@ Enable your Approov `admin` role with:
 
 ```bash
 eval `approov role admin ___YOUR_APPROOV_USERNAME_HERE___`
-```
-
-You can always display the active role using:
-
-```bash
-approov role .
 ```
 
 ### Configure API Domain
@@ -243,8 +237,8 @@ To build the docker image you will need to have cloned this repo to your compute
 Execute these two commands:
 
 ```bash
-git clone https://github.com/approov/quickstart-aws-api-gateway.git
-cd quickstart-aws-api-gateway
+git clone https://github.com/approov/quickstart-aws-api-gateway-v2.git
+cd quickstart-aws-api-gateway-v2
 ```
 
 Now, select `python` or `nodejs` as the target language for the authorizer lambda function and execute the command:
@@ -253,7 +247,7 @@ Now, select `python` or `nodejs` as the target language for the authorizer lambd
 sudo docker build --tag ${DOCKER_IMAGE_NAME} ./lambda/python # or nodejs
 ```
 
-> **NOTE:** AWS only permits lambda functions from Docker images stored in ECR and so the tag for the image MUST use the ECR repository URI with the following form: `${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com`.
+> **NOTE:** AWS only permits lambda functions from Docker images stored in ECR and so the tag for the image MUST use the ECR repository URI with the following form: `${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com`.
 
 #### Test the Docker Image
 
@@ -378,7 +372,7 @@ aws apigatewayv2 create-authorizer \
     --authorizer-type REQUEST \
     --identity-source '$request.header.Approov-Token' \
     --name approov-token-api-authorizer \
-    --authorizer-uri "arn:aws:apigateway:${AWS_REGION}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS_REGION}:${AWS_ACCOUNT_ID}:function:approov-token-lambda-authorizer/invocations" \
+    --authorizer-uri "arn:aws:apigateway:${AWS_DEFAULT_REGION}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS_DEFAULT_REGION}:${AWS_ACCOUNT_ID}:function:approov-token-lambda-authorizer/invocations" \
     --authorizer-payload-format-version '2.0' \
     --enable-simple-responses
 ```
@@ -402,7 +396,7 @@ aws lambda add-permission \
     --statement-id api-gateway-quickstart-lambda-permissions-01 \
     --action lambda:InvokeFunction \
     --principal apigateway.amazonaws.com \
-    --source-arn "arn:aws:execute-api:${AWS_REGION}:${AWS_ACCOUNT_ID}:${AWS_HTTP_API_ID}/authorizers/${AWS_AUTHORIZER_ID}"
+    --source-arn "arn:aws:execute-api:${AWS_DEFAULT_REGION}:${AWS_ACCOUNT_ID}:${AWS_HTTP_API_ID}/authorizers/${AWS_AUTHORIZER_ID}"
 ```
 
 The output will confirm the success of the operation.
@@ -439,7 +433,7 @@ The examples below use cURL to perform a request adding valid, invalid and no Ap
 Make a cURL request using one of the routes to which you added the Approov authorizer:
 
 ```bash
-curl -iX GET "https://${AWS_HTTP_API_ID}.execute-api.${AWS_REGION}.amazonaws.com" \
+curl -iX GET "https://${AWS_HTTP_API_ID}.execute-api.${AWS_DEFAULT_REGION}.amazonaws.com" \
   --header "Approov-Token: $(approov token -type valid -genExample ${API_DOMAIN})"
 ```
 
@@ -460,7 +454,7 @@ apigw-requestid: BvrXBhuAjoEEPSg=
 Make a cURL request using one of the routes to which you added the Approov authorizer:
 
 ```bash
-curl -iX GET "https://${AWS_HTTP_API_ID}.execute-api.${AWS_REGION}.amazonaws.com" \
+curl -iX GET "https://${AWS_HTTP_API_ID}.execute-api.${AWS_DEFAULT_REGION}.amazonaws.com" \
   --header "Approov-Token: $(approov token -type invalid -genExample ${API_DOMAIN})"
 ```
 
@@ -479,7 +473,7 @@ apigw-requestid: BvrtujDgDoEEMqg=
 Make a cURL request using one of the routes to which you added the Approov authorizer:
 
 ```bash
-curl -iX GET "https://${AWS_HTTP_API_ID}.execute-api.${AWS_REGION}.amazonaws.com"
+curl -iX GET "https://${AWS_HTTP_API_ID}.execute-api.${AWS_DEFAULT_REGION}.amazonaws.com"
 ```
 
 Output:
@@ -502,9 +496,9 @@ For example, when using Windows 10 WSL2 with Ubuntu you may have problems if Ubu
 
 #### AWS Region
 
-When your are asked to set the env var `AWS_REGION` you MUST use the same value configured at `~/.aws/config` otherwise it will cause permissions issues.
+When your are asked to set the env var `AWS_DEFAULT_REGION` you MUST use the same value configured at `~/.aws/config` otherwise it will cause permissions issues.
 
-If you don't want to change your `~/.aws/config` file and still use a different AWS region then you need to add the `--region ___AWS_REGION_HERE___` to all AWS CLI commands you copy from this quickstart.
+If you don't want to change your `~/.aws/config` file and still use a different AWS region then you need to add the `--region ___AWS_DEFAULT_REGION_HERE___` to all AWS CLI commands you copy from this quickstart.
 
 #### AWS Credentials
 

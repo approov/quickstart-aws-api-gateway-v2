@@ -13,7 +13,7 @@ log = logger.build(__name__)
 
 
 def fetchFromAwsSecretManager(secret_name):
-    secretsmanager_client = boto3.client('secretsmanager') #, region_name=AWS_REGION) #, endpoint_url='http://localhost:9000')
+    secretsmanager_client = boto3.client('secretsmanager')
 
     try:
         response = secretsmanager_client.get_secret_value(SecretId=secret_name)

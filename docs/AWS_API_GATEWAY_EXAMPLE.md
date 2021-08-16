@@ -65,7 +65,7 @@ aws apigatewayv2 create-authorizer \
     --authorizer-type REQUEST \
     --identity-source '$request.header.Approov-Token' \
     --name ${PREFIX}approov-${LAMBDA_LANG}-api-authorizer \
-    --authorizer-uri "arn:aws:apigateway:${AWS_REGION}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS_REGION}:${AWS_ACCOUNT_ID}:function:${PREFIX}approov-${LAMBDA_LANG}-lambda-authorizer/invocations" \
+    --authorizer-uri "arn:aws:apigateway:${AWS_DEFAULT_REGION}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS_DEFAULT_REGION}:${AWS_ACCOUNT_ID}:function:${PREFIX}approov-${LAMBDA_LANG}-lambda-authorizer/invocations" \
     --authorizer-payload-format-version '2.0' \
     --enable-simple-responses
 ```
@@ -90,7 +90,7 @@ cd quickstart-aws-api-gateway-v2
 
 ### Setup Placeholders as Environment Variables
 
-* `AWS_REGION` - MUST be the same as configured at `~/.aws/config`.
+* `AWS_DEFAULT_REGION` - MUST be the same as configured at `~/.aws/config`.
 * `AWS_ACCOUNT_ID` - MUST be your AWS account number. Use CLI command `aws sts get-caller-identity --query Account --output text` to print it if you are unsure.
 
 #### Prepare the Env File
@@ -116,7 +116,7 @@ Now customize the `.env` file for your setup by following the instructions in th
 Now, export all the env vars on the `.env` file to the environment with the following command:
 
 ```bash
-source .env
+export $(grep -v '^#' .env | xargs -0)
 ```
 
 [TOC](#toc-table-of-contents)
@@ -139,7 +139,7 @@ Execute one of the commands:
 or
 
 ```bash
-aws ecr get-login-password | sudo docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+aws ecr get-login-password | sudo docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com
 ```
 
 Output:
@@ -148,7 +148,7 @@ Output:
 Login Succeeded
 ```
 
-> **NOTE:** If your login doesn't succeed it's probably because the `AWS_REGION` environment variable doesn't match the value you have at `~/.aws/config`.
+> **NOTE:** If your login doesn't succeed it's probably because the `AWS_DEFAULT_REGION` environment variable doesn't match the value you have at `~/.aws/config`.
 
 
 #### Create the ECR Repository
@@ -200,10 +200,10 @@ Execute one of the commands:
 or
 
 ```bash
-sudo docker build --tag ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PREFIX}approov-${LAMBDA_LANG}-lambda-authorizer ./lambda/${LAMBDA_LANG}
+sudo docker build --tag ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${PREFIX}approov-${LAMBDA_LANG}-lambda-authorizer ./lambda/${LAMBDA_LANG}
 ```
 
-> **NOTE:** AWS only permits lambda functions from Docker images stored in ECR and so the tag for the image MUST use the ECR repository URI with the following form: `${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com`.
+> **NOTE:** AWS only permits lambda functions from Docker images stored in ECR and so the tag for the image MUST use the ECR repository URI with the following form: `${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com`.
 
 #### Test the Docker Image
 
@@ -225,7 +225,7 @@ sudo docker run \
     -p 9000:8080 \
     -v ~/.aws:/root/.aws \
     --env-file .env \
-    ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PREFIX}approov-${LAMBDA_LANG}-lambda-authorizer
+    ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${PREFIX}approov-${LAMBDA_LANG}-lambda-authorizer
 ```
 
 If you change the code then you just need to execute `./stack reset` to execute the `build` and `run` docker commands.
@@ -317,7 +317,7 @@ Execute one of the commands:
 or
 
 ```bash
-sudo docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PREFIX}approov-${LAMBDA_LANG}-lambda-authorizer
+sudo docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${PREFIX}approov-${LAMBDA_LANG}-lambda-authorizer
 ```
 
 Output:
@@ -415,7 +415,7 @@ or
 aws lambda create-function \
     --function-name ${PREFIX}approov-${LAMBDA_LANG}-lambda-authorizer \
     --package-type Image \
-    --code ImageUri=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PREFIX}approov-${LAMBDA_LANG}-lambda-authorizer:latest \
+    --code ImageUri=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${PREFIX}approov-${LAMBDA_LANG}-lambda-authorizer:latest \
     --role arn:aws:iam::${AWS_ACCOUNT_ID}:role/${PREFIX}approov-lambda-execution-role
 ```
 
@@ -689,7 +689,7 @@ or
 aws apigatewayv2 update-stage \
     --api-id ${AWS_HTTP_API_ID} \
     --stage-name '$default' \
-    --access-log-settings "{\"DestinationArn\": \"arn:aws:logs:${AWS_REGION}:${AWS_ACCOUNT_ID}:log-group:${PREFIX}aws-api-gateway-approov:*\", \"Format\": \"\$context.identity.sourceIp - - [\$context.requestTime] '\$context.httpMethod \$context.routeKey \$context.protocol' \$context.status \$context.responseLength \$context.requestId \$context.authorizer.error\"}"
+    --access-log-settings "{\"DestinationArn\": \"arn:aws:logs:${AWS_DEFAULT_REGION}:${AWS_ACCOUNT_ID}:log-group:${PREFIX}aws-api-gateway-approov:*\", \"Format\": \"\$context.identity.sourceIp - - [\$context.requestTime] '\$context.httpMethod \$context.routeKey \$context.protocol' \$context.status \$context.responseLength \$context.requestId \$context.authorizer.error\"}"
 ```
 
 Output:
@@ -734,7 +734,7 @@ aws apigatewayv2 create-authorizer \
     --authorizer-type REQUEST \
     --identity-source '$request.header.Approov-Token' \
     --name ${PREFIX}approov-${LAMBDA_LANG}-api-authorizer \
-    --authorizer-uri "arn:aws:apigateway:${AWS_REGION}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS_REGION}:${AWS_ACCOUNT_ID}:function:${PREFIX}approov-${LAMBDA_LANG}-lambda-authorizer/invocations" \
+    --authorizer-uri "arn:aws:apigateway:${AWS_DEFAULT_REGION}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS_DEFAULT_REGION}:${AWS_ACCOUNT_ID}:function:${PREFIX}approov-${LAMBDA_LANG}-lambda-authorizer/invocations" \
     --authorizer-payload-format-version '2.0' \
     --enable-simple-responses
 ```
@@ -780,7 +780,7 @@ aws lambda add-permission \
     --statement-id ${PREFIX}api-gateway-quickstart-lambda-permissions-01 \
     --action lambda:InvokeFunction \
     --principal apigateway.amazonaws.com \
-    --source-arn "arn:aws:execute-api:${AWS_REGION}:${AWS_ACCOUNT_ID}:${AWS_HTTP_API_ID}/authorizers/${AWS_AUTHORIZER_ID}"
+    --source-arn "arn:aws:execute-api:${AWS_DEFAULT_REGION}:${AWS_ACCOUNT_ID}:${AWS_HTTP_API_ID}/authorizers/${AWS_AUTHORIZER_ID}"
 ```
 
 Output:
@@ -878,7 +878,7 @@ Example for a valid Approov Token. Here we call the Kutt API via the API Gateway
 > **NOTE:** For testing another target API, you should adjust the request as required. The provided token is signed with the dummy secret provided at the top of this document and is valid until Mar 2119.
 
 ```bash
-curl -X POST "https://${AWS_HTTP_API_ID}.execute-api.${AWS_REGION}.amazonaws.com/api/v2/links"  \
+curl -X POST "https://${AWS_HTTP_API_ID}.execute-api.${AWS_DEFAULT_REGION}.amazonaws.com/api/v2/links"  \
     --header "Content-Type: application/json" \
     --header 'Approov-Token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjQ3MDg2ODMyMDUuODkxOTEyfQ.c8I4KNndbThAQ7zlgX4_QDtcxCrD9cff1elaCJe9p9U' \
     --data '{"target": "https://approov.io"}'
@@ -889,7 +889,7 @@ Output:
 ```json
 {
     "id":"72379aec-5c7e-4092-b702-267fde3929de",
-    "address":"8fK4Cc",
+    "address":"YrRyLV",
     "banned":false,
     "password":false,
     "target":"https://approov.io",
@@ -898,16 +898,16 @@ Output:
     "updated_at":"2021-08-04T16:29:05.990Z",
     "description":null,
     "expire_in":"2021-08-04T16:34:05.526Z",
-    "link":"https://kutt.it/8fK4Cc"
+    "link":"https://kutt.it/YrRyLV"
 }
 ```
 
-> **NOTE:** You can try the shortened link that was created, it should navigate to approov.io: [https://kutt.it/8fK4Cc](https://kutt.it/8fK4Cc]).
+> **NOTE:** You can try the shortened link that was created, it should navigate to approov.io: [https://kutt.it/YrRyLV](https://kutt.it/YrRyLV]).
 
 Example for an invalid Approov Token. We try the same request but use a different Approov token. The token has the same expiry time but it is not signed with the correct secret and so the Approov check in the authorizer will fail.
 
 ```bash
-curl -iX POST "https://${AWS_HTTP_API_ID}.execute-api.${AWS_REGION}.amazonaws.com/api/v2/links" \
+curl -iX POST "https://${AWS_HTTP_API_ID}.execute-api.${AWS_DEFAULT_REGION}.amazonaws.com/api/v2/links" \
     --header "Content-Type: application/json" \
     --header 'Approov-Token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjQ3MDg2ODMyMDUuODkxOTEyfQ._ZdLOZmK4KXSIpVlhOpHBgboSHHTWer-X6oLqFIDQWI' \
     --data '{"target": "https://approov.io"}'
@@ -928,7 +928,7 @@ apigw-requestid: BvrtujDgDoEEMqg=
 Example with a missing Approov Token header. Again a similar request, but if there is no token header, it will not pass the token check.
 
 ```bash
-curl -iX POST "https://${AWS_HTTP_API_ID}.execute-api.${AWS_REGION}.amazonaws.com/api/v2/links" \
+curl -iX POST "https://${AWS_HTTP_API_ID}.execute-api.${AWS_DEFAULT_REGION}.amazonaws.com/api/v2/links" \
     --header "Content-Type: application/json" \
     --data '{"target": "https://approov.io"}'
 ```

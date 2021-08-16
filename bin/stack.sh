@@ -87,7 +87,7 @@ EOF
 Set_Docker_Image_Name() {
   LAMBDA_LANG="${1? Missing lambda programming language, e.g: $ ./stack run python}"
   REPOSITORY_NAME="${PREFIX}approov/${LAMBDA_LANG}-lambda-authorizer"
-  IMAGE_NAME="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${REPOSITORY_NAME}:latest"
+  IMAGE_NAME="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${REPOSITORY_NAME}:latest"
 }
 
 Docker_Build() {
@@ -118,7 +118,7 @@ Docker_Stop() {
 AWS_ECR_Login() {
   aws ecr get-login-password | sudo docker login \
     --username AWS \
-    --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+    --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com
 }
 
 AWS_ECR_Create_Repository() {
@@ -188,7 +188,7 @@ AWS_API_GATEWAY_V2_Add_Logs() {
   aws apigatewayv2 update-stage \
     --api-id ${AWS_HTTP_API_ID} \
     --stage-name '$default' \
-    --access-log-settings "{\"DestinationArn\": \"arn:aws:logs:${AWS_REGION}:${AWS_ACCOUNT_ID}:log-group:${LOG_GROUP}:*\", \"Format\": \"\$context.identity.sourceIp - - [\$context.requestTime] '\$context.httpMethod \$context.routeKey \$context.protocol' \$context.status \$context.responseLength \$context.requestId \$context.authorizer.error\"}"
+    --access-log-settings "{\"DestinationArn\": \"arn:aws:logs:${AWS_DEFAULT_REGION}:${AWS_ACCOUNT_ID}:log-group:${LOG_GROUP}:*\", \"Format\": \"\$context.identity.sourceIp - - [\$context.requestTime] '\$context.httpMethod \$context.routeKey \$context.protocol' \$context.status \$context.responseLength \$context.requestId \$context.authorizer.error\"}"
 }
 
 AWS_API_GATEWAY_V2_Add_Authorizer() {
@@ -197,7 +197,7 @@ AWS_API_GATEWAY_V2_Add_Authorizer() {
     --authorizer-type REQUEST \
     --identity-source '$request.header.Approov-Token' \
     --name ${PREFIX}approov-${LAMBDA_LANG}-api-authorizer \
-    --authorizer-uri "arn:aws:apigateway:${AWS_REGION}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS_REGION}:${AWS_ACCOUNT_ID}:function:${PREFIX}approov-${LAMBDA_LANG}-lambda-authorizer/invocations" \
+    --authorizer-uri "arn:aws:apigateway:${AWS_DEFAULT_REGION}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS_DEFAULT_REGION}:${AWS_ACCOUNT_ID}:function:${PREFIX}approov-${LAMBDA_LANG}-lambda-authorizer/invocations" \
     --authorizer-payload-format-version '2.0' \
     --enable-simple-responses
 }
@@ -208,7 +208,7 @@ AWS_Lambda_Add_Permission() {
     --statement-id ${PREFIX}api-gateway-quickstart-lambda-permissions-01 \
     --action lambda:InvokeFunction \
     --principal apigateway.amazonaws.com \
-    --source-arn "arn:aws:execute-api:${AWS_REGION}:${AWS_ACCOUNT_ID}:${AWS_HTTP_API_ID}/authorizers/${AWS_AUTHORIZER_ID}"
+    --source-arn "arn:aws:execute-api:${AWS_DEFAULT_REGION}:${AWS_ACCOUNT_ID}:${AWS_HTTP_API_ID}/authorizers/${AWS_AUTHORIZER_ID}"
 }
 
 AWS_API_GATEWAY_V2_List_Routes() {
