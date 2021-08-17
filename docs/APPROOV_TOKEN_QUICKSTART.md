@@ -69,7 +69,7 @@ The initial set of variables are specified in the next section, the others will 
 
 ### Setup the Environment Variables
 
-* `AWS_DEFAULT_REGION` - MUST be the same as configured at `~/.aws/config`. If you want to use another region then you need to add it to each command `--region ___AWS_REGION_HERE___`.
+* `AWS_DEFAULT_REGION` - This env var will override the region configured at `~/.aws/config` and will be used by several commands through this quickstart.
 * `AWS_ACCOUNT_ID` - MUST be your AWS account number. It can be retrieved with `aws sts get-caller-identity --query Account --output text`
 * `AWS_HTTP_API_ID` - The ID for the HTTP API you want to protect with Approov. It can be retrieved from the AWS CLI with `aws apigatewayv2 get-apis`.
 * `API_DOMAIN` - The domain for the API in the AWS API Gateway.
@@ -493,12 +493,6 @@ apigw-requestid: Bvr3chAYjoEEPgg=
 The AWS CLI does some encryption on the data it sends in their requests. The encryption relies on your computer correctly reporting the time. If it is not properly synchronized you may get misleading errors reporting a bad request and/or permissions issues.
 
 For example, when using Windows 10 WSL2 with Ubuntu you may have problems if Ubuntu is using a different timezone to Windows, for example UTC+0 and UTC+1.
-
-#### AWS Region
-
-When your are asked to set the env var `AWS_DEFAULT_REGION` you MUST use the same value configured at `~/.aws/config` otherwise it will cause permissions issues.
-
-If you don't want to change your `~/.aws/config` file and still use a different AWS region then you need to add the `--region ___AWS_DEFAULT_REGION_HERE___` to all AWS CLI commands you copy from this quickstart.
 
 #### AWS Credentials
 

@@ -90,7 +90,7 @@ cd quickstart-aws-api-gateway-v2
 
 ### Setup Placeholders as Environment Variables
 
-* `AWS_DEFAULT_REGION` - MUST be the same as configured at `~/.aws/config`.
+* `AWS_DEFAULT_REGION` - This env var will override the region configured at `~/.aws/config` and will be used by several commands through this example.
 * `AWS_ACCOUNT_ID` - MUST be your AWS account number. Use CLI command `aws sts get-caller-identity --query Account --output text` to print it if you are unsure.
 
 #### Prepare the Env File
@@ -148,7 +148,7 @@ Output:
 Login Succeeded
 ```
 
-> **NOTE:** If your login doesn't succeed it's probably because the `AWS_DEFAULT_REGION` environment variable doesn't match the value you have at `~/.aws/config`.
+> **NOTE:** If your login doesn't succeed it's probably because you forgot to export the environment variables or their values aren't correct.
 
 
 #### Create the ECR Repository
