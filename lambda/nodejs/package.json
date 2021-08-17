@@ -1,0 +1,13 @@
+{
+  "name": "aws-api-gateway-approov-authorizer",
+  "version": "1.0.0",
+  "description": "AWS API Gateway custom authorizer for the Approov token.",
+  "main": "app.js",
+  "scripts": {},
+  "author": "Exadra37",
+  "license": "MIT",
+  "dependencies": {
+    "jsonwebtoken": "^8.5.1"
+  },
+  "devDependencies": {}
+}

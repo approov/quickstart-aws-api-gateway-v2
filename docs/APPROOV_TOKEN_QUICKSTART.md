@@ -1,0 +1,533 @@
+# Approov Token Quickstart
+
+This quickstart is for developers familiar with AWS API Gateway who want to learn how they can protect an existing HTTP API project in the AWS API Gateway by adding an [Approov](https://approov.io) authorizer lambda.
+
+
+## TOC - Table of Contents
+
+* [Why?](#why)
+* [How it Works?](#how-it-works)
+* [Requirements](#requirements)
+* [AWS CLI Setup](#aws-cli-setup)
+* [Approov Setup](#approov-setup)
+* [Approov Token Check](#approov-token-check)
+* [Test your Approov Integration](#test-your-approov-integration)
+* [Troubleshooting](#troubleshooting)
+
+
+## Why?
+
+To lock down your API server to your mobile app. Please read the brief summary in the [README](/README.md#why) at the root of this repo or visit our [website](https://approov.io/product.html) for more details.
+
+[TOC](#toc-table-of-contents)
+
+
+## How it works?
+
+For more background, see the overview in the [README](/README.md#how-it-works) at the root of this repo.
+
+
+[TOC](#toc-table-of-contents)
+
+
+## Requirements
+
+To complete this quickstart you will need to have an existing HTTP API created in the AWS API Gateway, and also have the AWS and Approov CLI(s) installed.
+
+* [AWS APIGATEWAY HTTP API](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop.html#http-api-examples.cli.quick-create) - If you don't have one yet you may want to follow instead the [AWS API Gateway Approov Example](/docs/AWS_API_GATEWAY_EXAMPLE.md).
+* [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) - Will be used to create all the necessary resources in AWS.
+* [Docker CLI](https://docs.docker.com/get-docker/) - Will be used to package the AWS lambda function.
+* [Approov CLI](https://approov.io/docs/latest/approov-installation/#approov-tool) - Will be used to retrieve the Approov Secret and configure the API.
+
+This quickstart was tested with the following Operating Systems:
+
+* Ubuntu 20.04
+* MacOS Big Sur
+* Windows 10 WSL2 - Ubuntu 20.04
+
+[TOC](#toc-table-of-contents)
+
+
+## AWS CLI Setup
+
+When following the instructions using the `aws` CLI you will notice that some commands use values from environment variables, for example:
+
+```bash
+aws lambda add-permission \
+    --function-name approov-token-lambda-authorizer \
+    --statement-id approov-lambda-permissions-01 \
+    --action lambda:InvokeFunction \
+    --principal apigateway.amazonaws.com \
+    --source-arn "arn:aws:execute-api:${AWS_DEFAULT_REGION}:${AWS_ACCOUNT_ID}:${AWS_HTTP_API_ID}/authorizers/${AWS_AUTHORIZER_ID}"
+```
+
+Some of the values for the variables in the above `aws` command are known from the start, like `${AWS_ACCOUNT_ID}`. Others can only be defined after the command that creates the associated resources, for example, the `${AWS_AUTHORIZER_ID}` is only known after the Authorizer has been created.
+
+The initial set of variables are specified in the next section, the others will be introduced after you execute the command that outputs their value.
+
+> **NOTE:** If you prefer to not set the variables used in the `aws` commands as environment variables then just replace each variable occurrence in a command with it's corresponding value.
+
+### Setup the Environment Variables
+
+* `AWS_DEFAULT_REGION` - This env var will override the region configured at `~/.aws/config` and will be used by several commands through this quickstart.
+* `AWS_ACCOUNT_ID` - MUST be your AWS account number. It can be retrieved with `aws sts get-caller-identity --query Account --output text`
+* `AWS_HTTP_API_ID` - The ID for the HTTP API you want to protect with Approov. It can be retrieved from the AWS CLI with `aws apigatewayv2 get-apis`.
+* `API_DOMAIN` - The domain for the API in the AWS API Gateway.
+* `DOCKER_IMAGE_REGISTRY` - The URL for your private AWS Elastic Container Registry (ECR).
+* `DOCKER_IMAGE_NAME` - The docker image name in the form `registry-url/repository:tag`.
+
+On Linux and MAC:
+
+```bash
+# AWS_DEFAULT_REGION=eu-west-2
+export AWS_DEFAULT_REGION=___YOUR_AWS_DEFAULT_REGION_HERE___
+
+# AWS_ACCOUNT_ID=1234567890
+export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+# AWS_HTTP_API_ID=kbjza06bsd
+export AWS_HTTP_API_ID=___YOUR_HTTP_API_ID_HERE___
+
+# API_DOMAIN=your.api.domain.com
+export API_DOMAIN=___YOUR_HTTP_API_DOMAIN_HERE___
+
+# DOCKER_IMAGE_REGISTRY=1234567890.dkr.ecr.eu-west-2.amazonaws.com
+export DOCKER_IMAGE_REGISTRY=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com
+
+# DOCKER_IMAGE_NAME=1234567890.dkr.ecr.eu-west-2.amazonaws.com/approov-token-lambda-authorizer:13July2021_16h18m52s
+export DOCKER_IMAGE_NAME=${DOCKER_IMAGE_REGISTRY}/approov-token-lambda-authorizer:$(date +%d%B%Y_%Hh%Mm%Ss)
+```
+
+## Approov Setup
+
+To use Approov with AWS API Gateway you need a small amount of configuration. First, Approov needs to know the API domain that will be protected. Second, AWS API Gateway needs the Approov Base64 encoded secret that will be used to verify the tokens generated by the Approov cloud service.
+
+### Approov Role
+
+To use the Appoov CLI in the next steps you need to enable the role under which you will run the commands. While the `approov api` command can be executed with the basic `dev` role the `approov secret` command requires an `admin` role, see [account access roles documentation](https://approov.io/docs/latest/approov-usage-documentation/#account-access-roles).
+
+Enable your Approov `admin` role with:
+
+```bash
+eval `approov role admin ___YOUR_APPROOV_USERNAME_HERE___`
+```
+
+### Configure API Domain
+
+Approov needs to know the domain name of the API for which it will issue tokens. Add it with:
+
+```bash
+approov api -add ${API_DOMAIN}
+```
+
+> **NOTE:** When prompted, authenticate your selected Approov role with your password. This will create an authenticated session that will expire in 1 hour, after which you will again be prompted for your password.
+
+Adding the API domain also configures [dynamic certificate pinning](https://approov.io/docs/latest/approov-usage-documentation/#approov-dynamic-pinning) for the API, the apps using your API need to be modified to take advantage of this.
+
+> **NOTE:** By default the pin is extracted from the public key of the leaf certificate served by the domain, as visible to both the box issuing the Approov CLI command and the Approov servers. Other `approov` commands can modify this default.
+
+### Approov Secret
+
+Approov defaults to signing tokens with a symmetric secret. To verify tokens, you need to grab the secret using the [Approov secret command](https://approov.io/docs/latest/approov-cli-tool-reference/#secret-command) and plug it into the AWS API Gateway environment to check the signatures of the [Approov Tokens](https://www.approov.io/docs/latest/approov-usage-documentation/#approov-tokens) that it processes.
+
+
+#### AWS IAM Role
+
+An IAM role will be necessary to setup and then access the Approov secret that will be stored in the AWS Secrets Manager.
+
+##### Create the IAM Role
+
+Execute the command:
+
+```bash
+aws iam create-role \
+    --role-name approov-lambda-execution-role \
+    --assume-role-policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":["lambda.amazonaws.com"]},"Action":"sts:AssumeRole"}]}'
+```
+
+The output will confirm the success of the operation.
+
+##### Attach a Policy to the IAM Role
+
+Execute the command:
+
+```bash
+aws iam attach-role-policy \
+    --role-name approov-lambda-execution-role \
+    --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+```
+
+No output for this command.
+
+#### Set the Approov Secret in the AWS Secrets Manager
+
+The preferred way to store the Approov secret is within the AWS Secrets Manager.
+
+To set the Approov secret in the AWS Secrets Manager execute:
+
+```bash
+aws secretsmanager create-secret \
+    --name APPROOV_BASE64_SECRET \
+    --description "The base64 encoded secret retrieved with the Approov CLI." \
+    --secret-string "$(approov secret -plain -get base64)"
+```
+
+Next, export the `ARN` from the command output with:
+
+```bash
+export APPROOV_BASE64_SECRET_AWS_ARN=___YOUR_AWS_ARN_HERE___
+```
+
+Now, set the permissions that will allow to access the secret from the lambda function:
+
+```bash
+aws secretsmanager put-resource-policy \
+    --secret-id APPROOV_BASE64_SECRET \
+    --resource-policy "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"arn:aws:iam::${AWS_ACCOUNT_ID}:role/approov-lambda-execution-role\"]},\"Action\":\"secretsmanager:GetSecretValue\",\"Resource\":\"${APPROOV_BASE64_SECRET_AWS_ARN}\"}]}"
+```
+
+The output will confirm the success of the operation.
+
+[TOC](#toc-table-of-contents)
+
+
+## Approov Token Check
+
+To check the Approov token in any existing AWS API Gateway project you need to create a lambda function and add it as an Authorizer to your HTTP API.
+
+The lambda function that checks the Approov token needs to be packaged as a docker image and pushed to the AWS Elastic Container Registry (ECR) in order to be able to create the AWS Lambda function that will then be used as a custom authorizer in the API Gateway. The [AWS docs](https://docs.aws.amazon.com/AmazonECR/latest/userguide/getting-started-cli.html) will be used as a reference to guide us through the process.
+
+Approov tokens are standard JSON Web Tokens(JWTs). It is very simple to check they are valid. The code is in the `verifyJwtToken` function of the lambdas for each supported programming language:
+
+* [Python - lambda/python/app.py](/lambda/python/app.py)
+* [NodeJS - lambda/nodejs/app.js](/lambda/nodejs/app.js)
+
+
+### The Docker Image for the Elastic Container Registry (ECR)
+
+#### Docker Login
+
+Execute the command:
+
+```bash
+aws ecr get-login-password | sudo docker login ${DOCKER_IMAGE_REGISTRY} --username AWS --password-stdin
+```
+
+> **NOTE:** The use of `sudo` after a pipe requires that you already have an active `sudo` session, because you will not see the prompt for the `sudo` password and the command will fail. To force a `sudo` login just execute the command `sudo docker`. The use of `sudo` may not be necessary to run docker commands on your system, but that depends on your system configuration.
+
+The output will confirm the success of the operation.
+
+#### Create the ECR Repository
+
+Execute the command:
+
+```bash
+aws ecr create-repository \
+    --repository-name approov-token-lambda-authorizer \
+    --image-scanning-configuration scanOnPush=true \
+    --image-tag-mutability IMMUTABLE
+```
+
+The output will confirm the success of the operation.
+
+#### Build the Docker Image
+
+To build the docker image you will need to have cloned this repo to your computer and have a shell active at the project root.
+
+Execute these two commands:
+
+```bash
+git clone https://github.com/approov/quickstart-aws-api-gateway-v2.git
+cd quickstart-aws-api-gateway-v2
+```
+
+Now, select `python` or `nodejs` as the target language for the authorizer lambda function and execute the command:
+
+```bash
+sudo docker build --tag ${DOCKER_IMAGE_NAME} ./lambda/python # or nodejs
+```
+
+> **NOTE:** AWS only permits lambda functions from Docker images stored in ECR and so the tag for the image MUST use the ECR repository URI with the following form: `${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com`.
+
+#### Test the Docker Image
+
+##### Run the Container in Localhost
+
+Execute the command:
+
+```bash
+sudo docker run \
+    --rm \
+    --detach \
+    --name approov-authorizer \
+    -p 9000:8080 \
+    -e "LAMBDA_LOG_LEVEL=DEBUG" \
+    -v ~/.aws:/root/.aws \
+    ${DOCKER_IMAGE_NAME}
+```
+
+If you modify the code for the lambda function after your initial build then you will need to rebuild and retest the image:
+
+* Update the tag for the image with `export DOCKER_IMAGE_NAME=${DOCKER_IMAGE_REGISTRY}/approov-token-lambda-authorizer:$(date +%d%B%Y_%Hh%Mm%Ss)`
+* Then execute the `build` and `run` docker commands again.
+
+##### Test with cURL Requests
+
+The cURL requests issued here are for testing the authorizer, they do not use the full requests that would be required by API Gateway. Instead we just need the `approov-token` header thereby simulating the internal call made to the lambda authorizer function.
+
+From the terminal, execute the following cURL requests.
+
+###### Example for a valid Appproov Token:
+
+```bash
+curl -X POST "http://localhost:9000/2015-03-31/functions/function/invocations" -d "{\"headers\": {\"approov-token\": \"$(approov token -type valid -genExample ${API_DOMAIN})\"}}"
+```
+
+Output:
+
+```json
+{"isAuthorized": true, "context": {"approovTokenClaims": {"exp": 1626266031, "ip": "1.2.3.4", "did": "ExampleApproovTokenDID=="}}}
+```
+
+###### Example for an invalid Approov Token:
+
+```bash
+curl -X POST "http://localhost:9000/2015-03-31/functions/function/invocations" -d "{\"headers\": {\"approov-token\": \"$(approov token -type invalid -genExample ${API_DOMAIN})\"}}"
+```
+
+Output:
+
+```json
+{"isAuthorized":false,"context":{"approovTokenClaims":""}}
+```
+
+###### Example for when the Approov Token header is missing:
+
+```bash
+curl -X POST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"headers": {}}'
+```
+
+Output:
+
+```json
+{"isAuthorized":false,"context":{"approovTokenClaims":""}}
+```
+
+##### Tail the Container Logs
+
+If you are not obtaining the expected responses then you need to take a look to the container logs while you issue the cURL requests.
+
+Open another terminal and execute the command:
+
+```bash
+sudo docker logs --follow approov-authorizer
+```
+
+##### Destroy the Container
+
+Now that testing is finished you need to stop and remove the container.
+
+Execute this command:
+
+```bash
+sudo docker stop approov-authorizer
+```
+
+The container will be automatically removed by docker because it was started with the flag `--rm`.
+
+#### Push the Docker Image to ECR
+
+Execute the command:
+
+```bash
+sudo docker push ${DOCKER_IMAGE_NAME}
+```
+
+### Create the Approov Lambda Function
+
+Execute the command:
+
+```bash
+aws lambda create-function \
+    --function-name approov-token-lambda-authorizer \
+    --package-type Image \
+    --code ImageUri=${DOCKER_IMAGE_NAME} \
+    --role arn:aws:iam::${AWS_ACCOUNT_ID}:role/approov-lambda-execution-role
+```
+
+> **NOTE:** The `--code ImageUri` parameter needs to be of the form `image-name:tag`; both `image-name` and `tag` are required.
+
+The output will confirm the success of the operation.
+
+[TOC](#toc-table-of-contents)
+
+
+### Create the Approov Lambda Authorizer
+
+Execute the command:
+
+```bash
+aws apigatewayv2 create-authorizer \
+    --api-id ${AWS_HTTP_API_ID} \
+    --authorizer-type REQUEST \
+    --identity-source '$request.header.Approov-Token' \
+    --name approov-token-api-authorizer \
+    --authorizer-uri "arn:aws:apigateway:${AWS_DEFAULT_REGION}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS_DEFAULT_REGION}:${AWS_ACCOUNT_ID}:function:approov-token-lambda-authorizer/invocations" \
+    --authorizer-payload-format-version '2.0' \
+    --enable-simple-responses
+```
+
+The output will confirm the success of the operation.
+
+#### Export the Authorize ID to the Environment
+
+```bash
+export AWS_AUTHORIZER_ID=___YOUR_AUTHORIZER_ID_HERE___
+```
+
+
+### Add the Lambda Permissions for the Authorizer
+
+Execute the command:
+
+```bash
+aws lambda add-permission \
+    --function-name approov-token-lambda-authorizer \
+    --statement-id api-gateway-quickstart-lambda-permissions-01 \
+    --action lambda:InvokeFunction \
+    --principal apigateway.amazonaws.com \
+    --source-arn "arn:aws:execute-api:${AWS_DEFAULT_REGION}:${AWS_ACCOUNT_ID}:${AWS_HTTP_API_ID}/authorizers/${AWS_AUTHORIZER_ID}"
+```
+
+The output will confirm the success of the operation.
+
+#### Add the Approov Authorizer to your HTTP API Routes
+
+To list all your routes execute:
+
+```bash
+aws apigatewayv2 get-routes --api-id ${AWS_HTTP_API_ID}
+```
+
+Now, for each route you want to protect with Approov execute:
+
+```bash
+aws apigatewayv2 update-route \
+    --api-id ${AWS_HTTP_API_ID} \
+    --authorizer-id ${AWS_AUTHORIZER_ID} \
+    --authorization-type CUSTOM \
+    --route-id ___YOUR_ROUTE_ID_HERE___
+```
+
+The output will confirm the success of the operation.
+
+[TOC](#toc-table-of-contents)
+
+
+## Test your Approov Integration
+
+The examples below use cURL to perform a request adding valid, invalid and no Approov token. You will need to expand these requests to include all the properties expected by the protected API. If you have an existing test setup using Postman, or some other mechanism/tool, then it should be easy to adjust that to add the different tests listed here.
+
+### With Valid Approov Tokens
+
+Make a cURL request using one of the routes to which you added the Approov authorizer:
+
+```bash
+curl -iX GET "https://${AWS_HTTP_API_ID}.execute-api.${AWS_DEFAULT_REGION}.amazonaws.com" \
+  --header "Approov-Token: $(approov token -type valid -genExample ${API_DOMAIN})"
+```
+
+> **NOTE**: If this command fails to complete, then it's probably because your Approov CLI authenticated session has expired and it is waiting for your password input. Kill the command and authenticate again as instructed in the Troubleshooting [section](#approov-cli-authentication-expired).
+
+The result of the cURL request should successful as defined by the protected API. For example:
+
+```text
+HTTP/2 200
+content-type: application/json; charset=utf-8
+apigw-requestid: BvrXBhuAjoEEPSg=
+
+"The response from your backend API"
+```
+
+### With Invalid Approov Tokens
+
+Make a cURL request using one of the routes to which you added the Approov authorizer:
+
+```bash
+curl -iX GET "https://${AWS_HTTP_API_ID}.execute-api.${AWS_DEFAULT_REGION}.amazonaws.com" \
+  --header "Approov-Token: $(approov token -type invalid -genExample ${API_DOMAIN})"
+```
+
+The above request should fail with an Unauthorized error. For example:
+
+```json
+HTTP/2 403
+content-type: application/json
+apigw-requestid: BvrtujDgDoEEMqg=
+
+{"message":"Forbidden"}
+```
+
+### Without the Required Approov Token Header
+
+Make a cURL request using one of the routes to which you added the Approov authorizer:
+
+```bash
+curl -iX GET "https://${AWS_HTTP_API_ID}.execute-api.${AWS_DEFAULT_REGION}.amazonaws.com"
+```
+
+Output:
+
+```json
+HTTP/2 401
+content-type: application/json
+apigw-requestid: Bvr3chAYjoEEPgg=
+
+{"message":"Unauthorized"}
+```
+
+## Troubleshooting
+
+#### AWS CLI and Clock Time
+
+The AWS CLI does some encryption on the data it sends in their requests. The encryption relies on your computer correctly reporting the time. If it is not properly synchronized you may get misleading errors reporting a bad request and/or permissions issues.
+
+For example, when using Windows 10 WSL2 with Ubuntu you may have problems if Ubuntu is using a different timezone to Windows, for example UTC+0 and UTC+1.
+
+#### AWS Credentials
+
+To use the AWS CLI you need to correctly configure the `~/.aws/credentials` file with the Access Key ID and the Secret Access Key for your IAM user.
+
+#### Increase Logs Verbosity
+
+If the cURL requests don't return the expected results then you need to check the CloudWatch logging. Specifically look for entries reported from the authorizer lambda function and from the request handling of the target API. You may need to increase the logging level in the lambda function to `DEBUG` to get to the root cause.
+
+Execute the command:
+
+```bash
+aws lambda update-function-configuration \
+    --function-name approov-token-lambda-authorizer \
+    --environment '{"Variables": {"LAMBDA_LOG_LEVEL": "DEBUG"}}'
+```
+
+> **NOTE:** The above command requires that you specify the complete environment for the lambda function. So if you require other environment variables to successful run the authorizer you will need to specify them as well.
+
+Now your lambda function will output more verbose logs and will make it easier to pinpoint the cause of the malfunction.
+
+For example:
+
+```text
+[INFO] 2021-07-13T11:37:34.066Z ff00e607-c4ec-40a5-8a5c-f3c150c76f78 Approov Token Verification: Invalid header padding
+```
+
+#### Approov CLI Authentication Expired
+
+The Approov CLI prompts for a password when the first approov command is issued after selecting an `admin` role and every hour after that. If you execute an Approov CLI command in a sub-shell, then the password prompt and opportunity for input may be lost. If a command sequence fails then it may be because your session has expired. Run a simple Approov CLI command to see if you need to renew your session, most commands will require a password to complete, even if the command just displays a help message::
+
+```bash
+approov api
+```
+
+Note that `approov role .` can be used to extend an active session. See [approov role](https://approov.io/docs/latest/approov-cli-tool-reference/#role-command) documentation.
+
+[TOC](#toc-table-of-contents)
