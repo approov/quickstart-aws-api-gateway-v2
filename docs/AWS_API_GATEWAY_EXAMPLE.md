@@ -24,14 +24,14 @@ The reverse proxy with an Approov authorizer that is built here can also be used
 
 To lock down your API server to your mobile app. Please read the brief summary in the [README](/README.md#why) at the root of this repo or visit our [website](https://approov.io/product.html) for more details.
 
-[TOC](#toc-table-of-contents)
+[TOC](#toc---table-of-contents)
 
 
 ## How it works?
 
 For more background, see the overview in the [README](/README.md#how-it-works) at the root of this repo.
 
-[TOC](#toc-table-of-contents)
+[TOC](#toc---table-of-contents)
 
 ## Requirements
 
@@ -44,7 +44,7 @@ This guide was tested with the following Operating Systems:
 * MacOS Big Sur
 * Windows 10 WSL2 - Ubuntu 20.04
 
-[TOC](#toc-table-of-contents)
+[TOC](#toc---table-of-contents)
 
 
 ## How to Follow the Instructions
@@ -74,7 +74,7 @@ aws apigatewayv2 create-authorizer \
 
 Choose the one you feel more comfortable with, you will get the same outcome either way.
 
-[TOC](#toc-table-of-contents)
+[TOC](#toc---table-of-contents)
 
 
 ## Setup
@@ -119,7 +119,7 @@ Now, export all the env vars on the `.env` file to the environment with the foll
 export $(grep -v '^#' .env | xargs -0)
 ```
 
-[TOC](#toc-table-of-contents)
+[TOC](#toc---table-of-contents)
 
 
 ## Approov Token Authorizer Lambda Function
@@ -492,7 +492,7 @@ Output:
 }
 ```
 
-[TOC](#toc-table-of-contents)
+[TOC](#toc---table-of-contents)
 
 
 ## API Gateway V2 with HTTP API
@@ -868,7 +868,7 @@ Output:
 }
 ```
 
-[TOC](#toc-table-of-contents)
+[TOC](#toc---table-of-contents)
 
 
 ## Test your Approov Integration
@@ -915,7 +915,7 @@ curl -iX POST "https://${AWS_HTTP_API_ID}.execute-api.${AWS_DEFAULT_REGION}.amaz
 
 Output:
 
-```json
+```text
 HTTP/2 403
 date: Wed, 30 Jun 2021 15:24:46 GMT
 content-type: application/json
@@ -935,7 +935,7 @@ curl -iX POST "https://${AWS_HTTP_API_ID}.execute-api.${AWS_DEFAULT_REGION}.amaz
 
 Output:
 
-```json
+```text
 HTTP/2 401
 date: Wed, 30 Jun 2021 15:25:48 GMT
 content-type: application/json
@@ -945,11 +945,36 @@ apigw-requestid: Bvr3chAYjoEEPgg=
 {"message":"Unauthorized"}
 ```
 
-[TOC](#toc-table-of-contents)
+[TOC](#toc---table-of-contents)
 
 
 ## Troubleshooting
 
 Please follow the [troubleshooting guide](/docs/APPROOV_TOKEN_QUICKSTART.md#troubleshooting) in the Approov quickstart.
 
-[TOC](#toc-table-of-contents)
+[TOC](#toc---table-of-contents)
+
+
+## Issues
+
+If you find any issue while following our instructions then just report it [here](https://github.com/approov/quickstart-aws-api-gateway-v2/issues), with the steps to reproduce it, and we will sort it out and/or guide you to the correct path.
+
+[TOC](#toc---table-of-contents)
+
+
+## Useful Links
+
+If you wish to explore the Approov solution in more depth, then why not try one of the following links as a jumping off point:
+
+* [Approov Free Trial](https://approov.io/signup)(no credit card needed)
+* [Approov Get Started](https://approov.io/product/demo)
+* [Approov QuickStarts](https://approov.io/docs/latest/approov-integration-examples/)
+* [Approov Docs](https://approov.io/docs)
+* [Approov Blog](https://approov.io/blog/)
+* [Approov Resources](https://approov.io/resource/)
+* [Approov Customer Stories](https://approov.io/customer)
+* [Approov Support](https://approov.zendesk.com/hc/en-gb/requests/new)
+* [About Us](https://approov.io/company)
+* [Contact Us](https://approov.io/contact)
+
+[TOC](#toc---table-of-contents)

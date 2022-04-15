@@ -9,77 +9,221 @@ This repo implements the Approov API request verification for the [AWS API Gatew
 If you are looking for another Approov integration you can check our list of [quickstarts](https://approov.io/docs/latest/approov-integration-examples/backend-api/), and if you don't find what you are looking for, then please let us know [here](https://approov.io/contact).
 
 
-## TOC - Table of Contents
-
-* [Why?](#why)
-* [How it Works?](#how-it-works)
-* [Quickstart](#approov-integration-quickstart)
-* [Useful Links](#useful-links)
-
-
-## Why?
-
-You can learn more about Approov, the motives for adopting it, and more detail on how it works by following this [link](https://approov.io/product). In brief, Approov:
-
-* Ensures that accesses to your API come from official versions of your apps; it blocks accesses from republished, modified, or tampered versions
-* Protects the sensitive data behind your API; it prevents direct API abuse from bots or scripts scraping data and other malicious activity
-* Secures the communication channel between your app and your API with [Approov Dynamic Certificate Pinning](https://approov.io/docs/latest/approov-usage-documentation/#approov-dynamic-pinning). This has all the benefits of traditional pinning but without the drawbacks
-* Removes the need for an API key in the mobile app
-* Provides DoS protection against targeted attacks that aim to exhaust the API server resources to prevent real users from reaching the service or to at least degrade the user experience.
-
-[TOC](#toc-table-of-contents)
-
-
-## How it works?
-
-This is a brief overview of how the Approov cloud service and the AWS API Gateway fit together from a backend perspective. For a complete overview of how the mobile app and backend fit together with the Approov cloud service and the Approov SDK we recommend that you read the [Approov overview](https://approov.io/product) page on our website.
-
-### Approov Cloud Service
-
-The Approov cloud service attests that a device is running a legitimate and tamper-free version of your mobile app.
-
-* If the integrity check passes then a valid token is returned to the mobile app
-* If the integrity check fails then a legitimate looking token will be returned
-
-In either case, the app, unaware of the token's validity, adds it to every request it makes to Approov protected API(s).
-
-### AWS API Gateway
-
-This quick start shows you how to setup AWS API Gateway to ensure that the token supplied in the `Approov-Token` header is present and valid. The validation is done by using a shared secret known only to the Approov cloud service and your AWS API Gateway deployment.
-
-The request is handled such that:
-
-* If the Approov Token is valid, the request is allowed to reach the API endpoint
-* If the Approov Token is invalid, an HTTP 403 Forbidden response is returned
-* If the Approov Token is missing, an HTTP 401 Unauthorized response is returned
-
-[TOC](#toc-table-of-contents)
-
 
 ## Approov Integration Quickstart
 
-The quickstart for the Approov integration with the AWS API Gateway gets you up and running with basic Approov token checking:
+The quickstart assumes that you already have an AWS API Gateway running, and that you are familiar with the options for applying changes. If you are not familiar with the AWS API Gateway then you may want to follow the step by step [AWS API Gateway Example](/docs/AWS_API_GATEWAY_EXAMPLE.md) instead.
 
-* [Approov token check quickstart](/docs/APPROOV_TOKEN_QUICKSTART.md)
+The quickstart was tested with the following Operating Systems:
 
-Please bear in mind that the quickstart assumes that you already have an AWS API Gateway running, and that you are familiar with the options for applying changes. If you are not familiar with the AWS API Gateway then you may want to follow the step by step [AWS API Gateway Example](/docs/AWS_API_GATEWAY_EXAMPLE.md) instead. This takes you though all the steps to get a new deployment with Approov protection from scratch.
+* Ubuntu 20.04
+* MacOS Big Sur
+* Windows 10 WSL2 - Ubuntu 20.04
 
-If you need further help adding Approov to your AWS API Gateway deployment then please contact us [here](https://approov.io/contact).
+If you find yourself lost or blocked in some part of the quickstart, then you can check the [detailed quickstart](docs/APPROOV_TOKEN_QUICKSTART.md).
+
+To complete the quickstart you need to have an existing [HTTP API](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop.html#http-api-examples.cli.quick-create) created in the AWS API Gateway, and also have the [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) and [Approov CLI](https://approov.io/docs/latest/approov-installation/#approov-tool) installed.
+
+To make it easier to run all the CLI commands we need to set some environment variables.
+
+On Linux and MAC:
+
+```bash
+# AWS_DEFAULT_REGION=eu-west-2
+export AWS_DEFAULT_REGION=___YOUR_AWS_DEFAULT_REGION_HERE___
+
+# AWS_ACCOUNT_ID=1234567890
+export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+# AWS_HTTP_API_ID=kbjza06bsd
+export AWS_HTTP_API_ID=___YOUR_HTTP_API_ID_HERE___
+
+# API_DOMAIN=your.api.domain.com
+export API_DOMAIN=___YOUR_HTTP_API_DOMAIN_HERE___
+
+# DOCKER_IMAGE_REGISTRY=1234567890.dkr.ecr.eu-west-2.amazonaws.com
+export DOCKER_IMAGE_REGISTRY=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com
+
+# DOCKER_IMAGE_NAME=1234567890.dkr.ecr.eu-west-2.amazonaws.com/approov-token-lambda-authorizer:13July2021_16h18m52s
+export DOCKER_IMAGE_NAME=${DOCKER_IMAGE_REGISTRY}/approov-token-lambda-authorizer:$(date +%d%B%Y_%Hh%Mm%Ss)
+```
+
+First, enable your Approov `admin` role with:
+
+```bash
+eval `approov role admin`
+````
+
+Next, register the API domain for which Approov will issues tokens:
+
+```bash
+approov api -add ${API_DOMAIN}
+```
+
+Now, create an IAM role:
+
+```bash
+aws iam create-role \
+    --role-name approov-lambda-execution-role \
+    --assume-role-policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":["lambda.amazonaws.com"]},"Action":"sts:AssumeRole"}]}'
+```
+
+Next, attach a policy to the IAM role:
+
+```bash
+aws iam attach-role-policy \
+    --role-name approov-lambda-execution-role \
+    --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+```
+
+Now, to set the Approov secret in the AWS Secrets Manager execute:
+
+```bash
+aws secretsmanager create-secret \
+    --name APPROOV_BASE64_SECRET \
+    --description "The base64 encoded secret retrieved with the Approov CLI." \
+    --secret-string "$(approov secret -plain -get base64)"
+```
+
+Next, export the `ARN` from the above command output with:
+
+```bash
+export APPROOV_BASE64_SECRET_AWS_ARN=___YOUR_AWS_ARN_HERE___
+```
+
+Now, set the permissions that will allow to access the secret from the lambda function:
+
+```bash
+aws secretsmanager put-resource-policy \
+    --secret-id APPROOV_BASE64_SECRET \
+    --resource-policy "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"arn:aws:iam::${AWS_ACCOUNT_ID}:role/approov-lambda-execution-role\"]},\"Action\":\"secretsmanager:GetSecretValue\",\"Resource\":\"${APPROOV_BASE64_SECRET_AWS_ARN}\"}]}"
+```
+
+Next, login to the AWS ECR repository:
+
+```bash
+aws ecr get-login-password | sudo docker login ${DOCKER_IMAGE_REGISTRY} --username AWS --password-stdin
+```
+> **NOTE:** The use of `sudo` after a pipe requires that you already have an active `sudo` session, because you will not see the prompt for the `sudo` password and the command will fail.
+
+Now, create the AWS ECR repository:
+
+```bash
+aws ecr create-repository \
+    --repository-name approov-token-lambda-authorizer \
+    --image-scanning-configuration scanOnPush=true \
+    --image-tag-mutability IMMUTABLE
+```
+
+Next, clone this repo in order to be able to build the docker image with the lambda function:
+
+```bash
+git clone https://github.com/approov/quickstart-aws-api-gateway-v2.git
+cd quickstart-aws-api-gateway-v2
+```
+
+Now, build the docker image:
+
+```bash
+sudo docker build --tag ${DOCKER_IMAGE_NAME} ./lambda/python # or nodejs
+```
+
+Next, start the docker image to run a smoke test on it:
+
+```bash
+sudo docker run \
+    --rm \
+    --detach \
+    --name approov-authorizer \
+    -p 9000:8080 \
+    -e "LAMBDA_LOG_LEVEL=DEBUG" \
+    -v ~/.aws:/root/.aws \
+    ${DOCKER_IMAGE_NAME}
+```
+
+Now, run the smoke test:
+
+```bash
+curl -X POST "http://localhost:9000/2015-03-31/functions/function/invocations" -d "{\"headers\": {\"approov-token\": \"$(approov token -type valid -genExample ${API_DOMAIN})\"}}"
+```
+
+Next, create the Approov lambda function:
+
+```bash
+aws lambda create-function \
+    --function-name approov-token-lambda-authorizer \
+    --package-type Image \
+    --code ImageUri=${DOCKER_IMAGE_NAME} \
+    --role arn:aws:iam::${AWS_ACCOUNT_ID}:role/approov-lambda-execution-role
+```
+
+Now, create the the Approov lambda authorizer:
+
+```bash
+aws apigatewayv2 create-authorizer \
+    --api-id ${AWS_HTTP_API_ID} \
+    --authorizer-type REQUEST \
+    --identity-source '$request.header.Approov-Token' \
+    --name approov-token-api-authorizer \
+    --authorizer-uri "arn:aws:apigateway:${AWS_DEFAULT_REGION}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS_DEFAULT_REGION}:${AWS_ACCOUNT_ID}:function:approov-token-lambda-authorizer/invocations" \
+    --authorizer-payload-format-version '2.0' \
+    --enable-simple-responses
+```
+
+Next, export the authorizer ID to the environment:
+
+```bash
+export AWS_AUTHORIZER_ID=___YOUR_AUTHORIZER_ID_HERE___
+```
+
+Now, add the lambda permissions to the authorizer:
+
+```bash
+aws lambda add-permission \
+    --function-name approov-token-lambda-authorizer \
+    --statement-id api-gateway-quickstart-lambda-permissions-01 \
+    --action lambda:InvokeFunction \
+    --principal apigateway.amazonaws.com \
+    --source-arn "arn:aws:execute-api:${AWS_DEFAULT_REGION}:${AWS_ACCOUNT_ID}:${AWS_HTTP_API_ID}/authorizers/${AWS_AUTHORIZER_ID}"
+```
+
+Finally, for each route you want to protect with Approov execute:
+
+```bash
+aws apigatewayv2 update-route \
+    --api-id ${AWS_HTTP_API_ID} \
+    --authorizer-id ${AWS_AUTHORIZER_ID} \
+    --authorization-type CUSTOM \
+    --route-id ___YOUR_ROUTE_ID_HERE___
+```
+
+Not enough details in the bare bones quickstart? No worries, check the [detailed quickstart](docs/APPROOV_TOKEN_QUICKSTART.md) that contain a more comprehensive set of instructions, including how to test the Approov integration.
+
+
+## More Information
+
+* [Approov Overview](OVERVIEW.md)
+* [Detailed Quickstart](docs/APPROOV_TOKEN_QUICKSTART.md)
+* [Step by Step Example](docs/AWS_API_GATEWAY_EXAMPLE.md)
+* [Testing](docs/APPROOV_TOKEN_QUICKSTART.md#test-your-approov-integration)
+
+
+## Issues
+
+If you find any issue while following our instructions then just report it [here](https://github.com/approov/quickstart-aws-api-gateway-v2/issues), with the steps to reproduce it, and we will sort it out and/or guide you to the correct path.
 
 
 ## Useful Links
 
 If you wish to explore the Approov solution in more depth, then why not try one of the following links as a jumping off point:
 
-* [Approov Free Trial](https://approov.io/signup) (no credit card needed)
+* [Approov Free Trial](https://approov.io/signup)(no credit card needed)
+* [Approov Get Started](https://approov.io/product/demo)
 * [Approov QuickStarts](https://approov.io/docs/latest/approov-integration-examples/)
-* [Approov Live Demo](https://approov.io/product/demo)
 * [Approov Docs](https://approov.io/docs)
-* [Approov Blog](https://blog.approov.io)
+* [Approov Blog](https://approov.io/blog/)
 * [Approov Resources](https://approov.io/resource/)
 * [Approov Customer Stories](https://approov.io/customer)
 * [Approov Support](https://approov.zendesk.com/hc/en-gb/requests/new)
 * [About Us](https://approov.io/company)
 * [Contact Us](https://approov.io/contact)
-
-[TOC](#toc-table-of-contents)

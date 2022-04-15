@@ -19,7 +19,7 @@ This quickstart is for developers familiar with AWS API Gateway who want to lear
 
 To lock down your API server to your mobile app. Please read the brief summary in the [README](/README.md#why) at the root of this repo or visit our [website](https://approov.io/product.html) for more details.
 
-[TOC](#toc-table-of-contents)
+[TOC](#toc---table-of-contents)
 
 
 ## How it works?
@@ -27,7 +27,7 @@ To lock down your API server to your mobile app. Please read the brief summary i
 For more background, see the overview in the [README](/README.md#how-it-works) at the root of this repo.
 
 
-[TOC](#toc-table-of-contents)
+[TOC](#toc---table-of-contents)
 
 
 ## Requirements
@@ -45,7 +45,7 @@ This quickstart was tested with the following Operating Systems:
 * MacOS Big Sur
 * Windows 10 WSL2 - Ubuntu 20.04
 
-[TOC](#toc-table-of-contents)
+[TOC](#toc---table-of-contents)
 
 
 ## AWS CLI Setup
@@ -109,7 +109,7 @@ To use the Appoov CLI in the next steps you need to enable the role under which 
 Enable your Approov `admin` role with:
 
 ```bash
-eval `approov role admin ___YOUR_APPROOV_USERNAME_HERE___`
+eval `approov role admin`
 ```
 
 ### Configure API Domain
@@ -188,7 +188,7 @@ aws secretsmanager put-resource-policy \
 
 The output will confirm the success of the operation.
 
-[TOC](#toc-table-of-contents)
+[TOC](#toc---table-of-contents)
 
 
 ## Approov Token Check
@@ -359,7 +359,7 @@ aws lambda create-function \
 
 The output will confirm the success of the operation.
 
-[TOC](#toc-table-of-contents)
+[TOC](#toc---table-of-contents)
 
 
 ### Create the Approov Lambda Authorizer
@@ -421,7 +421,7 @@ aws apigatewayv2 update-route \
 
 The output will confirm the success of the operation.
 
-[TOC](#toc-table-of-contents)
+[TOC](#toc---table-of-contents)
 
 
 ## Test your Approov Integration
@@ -460,7 +460,7 @@ curl -iX GET "https://${AWS_HTTP_API_ID}.execute-api.${AWS_DEFAULT_REGION}.amazo
 
 The above request should fail with an Unauthorized error. For example:
 
-```json
+```text
 HTTP/2 403
 content-type: application/json
 apigw-requestid: BvrtujDgDoEEMqg=
@@ -478,7 +478,7 @@ curl -iX GET "https://${AWS_HTTP_API_ID}.execute-api.${AWS_DEFAULT_REGION}.amazo
 
 Output:
 
-```json
+```text
 HTTP/2 401
 content-type: application/json
 apigw-requestid: Bvr3chAYjoEEPgg=
@@ -530,4 +530,29 @@ approov api
 
 Note that `approov role .` can be used to extend an active session. See [approov role](https://approov.io/docs/latest/approov-cli-tool-reference/#role-command) documentation.
 
-[TOC](#toc-table-of-contents)
+[TOC](#toc---table-of-contents)
+
+
+## Issues
+
+If you find any issue while following our instructions then just report it [here](https://github.com/approov/quickstart-aws-api-gateway-v2/issues), with the steps to reproduce it, and we will sort it out and/or guide you to the correct path.
+
+[TOC](#toc---table-of-contents)
+
+
+## Useful Links
+
+If you wish to explore the Approov solution in more depth, then why not try one of the following links as a jumping off point:
+
+* [Approov Free Trial](https://approov.io/signup)(no credit card needed)
+* [Approov Get Started](https://approov.io/product/demo)
+* [Approov QuickStarts](https://approov.io/docs/latest/approov-integration-examples/)
+* [Approov Docs](https://approov.io/docs)
+* [Approov Blog](https://approov.io/blog/)
+* [Approov Resources](https://approov.io/resource/)
+* [Approov Customer Stories](https://approov.io/customer)
+* [Approov Support](https://approov.zendesk.com/hc/en-gb/requests/new)
+* [About Us](https://approov.io/company)
+* [Contact Us](https://approov.io/contact)
+
+[TOC](#toc---table-of-contents)
