@@ -110,6 +110,12 @@ Enable your Approov `admin` role with:
 
 ```bash
 eval `approov role admin`
+````
+
+For the Windows powershell:
+
+```bash
+set APPROOV_ROLE=admin:___YOUR_APPROOV_ACCOUNT_NAME_HERE___
 ```
 
 ### Configure API Domain
