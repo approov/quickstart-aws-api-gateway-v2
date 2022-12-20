@@ -126,9 +126,17 @@ Approov needs to know the domain name of the API for which it will issue tokens.
 approov api -add ${API_DOMAIN}
 ```
 
-> **NOTE:** When prompted, authenticate your selected Approov role with your password. This will create an authenticated session that will expire in 1 hour, after which you will again be prompted for your password.
+> **ALERT:** When prompted, authenticate your selected Approov role with your password. This will create an authenticated session that will expire in 1 hour, after which you will again be prompted for your password.
 
-Adding the API domain also configures [dynamic certificate pinning](https://approov.io/docs/latest/approov-usage-documentation/#approov-dynamic-pinning) for the API, the apps using your API need to be modified to take advantage of this.
+
+> **NOTE:** By default a symmetric key (HS256) is used to sign the Approov token on a valid attestation of the mobile app for each API domain it's added with the Approov CLI, so that all APIs will share the same secret and the backend needs to take care to keep this secret secure.
+>
+> A more secure alternative is to use asymmetric keys (RS256 or others) that allows for a different keyset to be used on each API domain and for the Approov token to be verified with a public key that can only verify, but not sign, Approov tokens.
+>
+> To implement the asymmetric key you need to change from using the symmetric HS256 algorithm to an asymmetric algorithm, for example RS256, that requires you to first [add a new key](https://approov.io/docs/latest/approov-usage-documentation/#adding-a-new-key), and then specify it when [adding each API domain](https://approov.io/docs/latest/approov-usage-documentation/#keyset-key-api-addition). Please visit [Managing Key Sets](https://approov.io/docs/latest/approov-usage-documentation/#managing-key-sets) on the Approov documentation for more details.
+
+
+Adding the API domain also configures [dynamic certificate pinning](https://approov.io/docs/latest/approov-usage-documentation/#dynamic-pinning) for the API, the apps using your API need to be modified to take advantage of this.
 
 > **NOTE:** By default the pin is extracted from the public key of the leaf certificate served by the domain, as visible to both the box issuing the Approov CLI command and the Approov servers. Other `approov` commands can modify this default.
 
